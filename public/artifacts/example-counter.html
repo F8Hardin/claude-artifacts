@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Counter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+      background: #f8fafc;
+      color: #1e293b;
+    }
+    .card {
+      background: white; border-radius: 16px; padding: 48px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+    .count {
+      font-size: 72px; font-weight: 700; margin: 24px 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .buttons { display: flex; gap: 12px; justify-content: center; }
+    button {
+      padding: 10px 24px; border: none; border-radius: 8px;
+      font-size: 16px; font-weight: 500; cursor: pointer;
+      transition: transform 0.1s, background 0.2s;
+    }
+    button:active { transform: scale(0.95); }
+    .dec { background: #fee2e2; color: #dc2626; }
+    .dec:hover { background: #fecaca; }
+    .inc { background: #dcfce7; color: #16a34a; }
+    .inc:hover { background: #bbf7d0; }
+    .reset { background: #e2e8f0; color: #475569; }
+    .reset:hover { background: #cbd5e1; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Counter</h1>
+    <div class="count" id="count">0</div>
+    <div class="buttons">
+      <button class="dec" onclick="update(-1)">- 1</button>
+      <button class="reset" onclick="reset()">Reset</button>
+      <button class="inc" onclick="update(1)">+ 1</button>
+    </div>
+  </div>
+  <script>
+    let count = 0;
+    const el = document.getElementById('count');
+    function update(n) { count += n; el.textContent = count; }
+    function reset() { count = 0; el.textContent = count; }
+  </script>
+</body>
+</html>

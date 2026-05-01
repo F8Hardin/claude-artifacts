@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>げんき Study — GENKI I</title>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1209;
+    --paper: #fdf6ec;
+    --warm: #f5ebe0;
+    --accent: #c94a1f;
+    --accent2: #2a6496;
+    --muted: #8a7968;
+    --card: #fff9f2;
+    --border: #e8ddd0;
+    --green: #3a7d44;
+    --red: #c94a1f;
+    --gold: #b8860b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── NAV ── */
+  nav {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 3px solid var(--accent);
+  }
+  .nav-logo {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--paper);
+    margin-right: 2rem;
+    letter-spacing: -0.5px;
+  }
+  .nav-logo span { color: var(--accent); }
+  .nav-tabs {
+    display: flex;
+    height: 100%;
+    gap: 0;
+    list-style: none;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .nav-tab {
+    padding: 0 1.1rem;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #a89880;
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .nav-tab:hover { color: var(--paper); }
+  .nav-tab.active { color: var(--paper); border-bottom-color: var(--accent); }
+
+  /* ── PAGES ── */
+  .page { display: none; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── HOME ── */
+  .home-hero {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+  }
+  .home-hero h1 {
+    font-family: 'Shippori Mincho', serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  .home-hero h1 span { color: var(--accent); }
+  .home-hero p {
+    color: var(--muted);
+    margin-top: 0.75rem;
+    font-size: 1.05rem;
+  }
+  .lesson-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 2.5rem;
+  }
+  .lesson-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1.4rem 1.2rem;
+    cursor: pointer;
+    transition: all 0.18s;
+    position: relative;
+    overflow: hidden;
+  }
+  .lesson-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transition: transform 0.18s;
+    transform-origin: left;
+  }
+  .lesson-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-color: var(--accent); }
+  .lesson-card:hover::before { transform: scaleX(1); }
+  .lesson-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .lesson-title {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-top: 0.3rem;
+    line-height: 1.3;
+  }
+  .lesson-sub {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 0.3rem;
+  }
+  .lesson-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 0.7rem;
+  }
+  .tag {
+    font-size: 0.7rem;
+    padding: 2px 7px;
+    border-radius: 20px;
+    background: var(--warm);
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  /* ── SECTION HEADER ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .back-btn {
+    padding: 0.4rem 1rem;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-family: 'Outfit', sans-serif;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .back-btn:hover { border-color: var(--ink); color: var(--ink); }
+  .section-title {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  /* ── SUBSECTION TABS ── */
+  .sub-tabs {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+  .sub-tab {
+    padding: 0.45rem 1rem;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: none;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .sub-tab:hover { border-color: var(--accent); color: var(--accent); }
+  .sub-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+  /* ── FLASHCARD ── */
+  .flashcard-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  .progress-bar-wrap {
+    width: 100%;
+    max-width: 560px;
+    background: var(--border);
+    border-radius: 99px;
+    height: 5px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 99px;
+    transition: width 0.3s ease;
+  }
+  .progress-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .card-3d {
+    width: 100%;
+    max-width: 560px;
+    perspective: 1000px;
+  }
+  .card-inner {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    transform-style: preserve-3d;
+    transition: transform 0.5s cubic-bezier(.4,.2,.2,1);
+    cursor: pointer;
+  }
+  .card-inner.flipped { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    border-radius: 16px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border: 1.5px solid var(--border);
+  }
+  .card-front {
+    background: var(--card);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  }
+  .card-back {
+    background: var(--ink);
+    transform: rotateY(180deg);
+    border-color: var(--ink);
+  }
+  .card-hint {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .card-main {
+    font-family: 'Shippori Mincho', serif;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--ink);
+  }
+  .card-back .card-hint { color: #a89880; }
+  .card-back .card-main { color: var(--paper); }
+  .card-back .card-sub {
+    color: #a89880;
+    font-size: 1rem;
+    margin-top: 0.4rem;
+    font-family: 'DM Mono', monospace;
+  }
+  .card-sub {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-top: 0.3rem;
+    font-family: 'DM Mono', monospace;
+  }
+  .card-tap {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 1rem;
+    opacity: 0.6;
+  }
+  .card-controls {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 560px;
+  }
+  .card-btn {
+    flex: 1;
+    padding: 0.75rem;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: none;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  .card-btn.wrong { color: var(--red); border-color: var(--red); }
+  .card-btn.wrong:hover { background: var(--red); color: white; }
+  .card-btn.right { color: var(--green); border-color: var(--green); }
+  .card-btn.right:hover { background: var(--green); color: white; }
+  .card-btn.nav { color: var(--muted); }
+  .card-btn.nav:hover { border-color: var(--ink); color: var(--ink); }
+  .card-mode-toggle {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--muted);
+    width: 100%;
+    max-width: 560px;
+  }
+  .toggle-btn {
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: none;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .toggle-btn.active { background: var(--accent2); border-color: var(--accent2); color: white; }
+
+  /* ── VOCAB TABLE ── */
+  .vocab-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  .vocab-table thead th {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    border-bottom: 2px solid var(--border);
+  }
+  .vocab-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .vocab-table tbody tr:hover { background: var(--warm); }
+  .vocab-table td {
+    padding: 0.55rem 0.75rem;
+    vertical-align: middle;
+  }
+  .jp { font-family: 'Shippori Mincho', serif; font-size: 1.1rem; font-weight: 600; }
+  .rom { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--muted); }
+  .cat-badge {
+    font-size: 0.68rem;
+    padding: 2px 7px;
+    border-radius: 20px;
+    background: var(--warm);
+    color: var(--muted);
+    font-weight: 600;
+    white-space: nowrap;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── CONJUGATION ── */
+  .conj-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+  .conj-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem;
+  }
+  .conj-verb {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+  }
+  .conj-rom { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.8rem; }
+  .conj-type {
+    display: inline-block;
+    font-size: 0.68rem;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 0.5rem;
+  }
+  .type-u { background: #fff0e6; color: #c94a1f; }
+  .type-ru { background: #e6f0ff; color: #2a6496; }
+  .type-irr { background: #f0ffe6; color: #3a7d44; }
+  .conj-forms {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+  }
+  .form-label { color: var(--muted); font-size: 0.7rem; font-family: 'DM Mono', monospace; text-transform: uppercase; }
+  .form-val { font-family: 'Shippori Mincho', serif; font-size: 1rem; font-weight: 600; }
+  .form-neg { color: var(--accent); }
+
+  /* ── PARTICLES ── */
+  .particle-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+  .particle-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 1.4rem;
+    border-left: 4px solid var(--accent);
+  }
+  .particle-jp {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .particle-name { font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.4rem; font-family: 'DM Mono', monospace; }
+  .particle-desc { font-size: 0.88rem; color: var(--ink); margin-bottom: 0.6rem; line-height: 1.5; }
+  .particle-ex { font-size: 0.8rem; background: var(--warm); border-radius: 6px; padding: 0.4rem 0.7rem; font-family: 'Shippori Mincho', serif; }
+
+  /* ── QUIZ ── */
+  .quiz-question {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+  .quiz-q-text {
+    font-family: 'Shippori Mincho', serif;
+    font-size: clamp(1.5rem, 4vw, 2.2rem);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .quiz-q-sub { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.5rem; font-family: 'DM Mono', monospace; }
+  .quiz-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    max-width: 560px;
+    margin: 1rem auto 0;
+  }
+  .quiz-opt {
+    padding: 0.8rem;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    cursor: pointer;
+    font-family: 'Shippori Mincho', serif;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .quiz-opt:hover:not([disabled]) { border-color: var(--accent2); color: var(--accent2); }
+  .quiz-opt.correct { background: #e8f7ec; border-color: var(--green); color: var(--green); }
+  .quiz-opt.wrong { background: #fdecea; border-color: var(--red); color: var(--red); }
+  .quiz-opt[disabled] { cursor: default; }
+  .quiz-feedback {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    min-height: 1.5rem;
+  }
+  .feedback-correct { color: var(--green); }
+  .feedback-wrong { color: var(--red); }
+  .score-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 0.5rem;
+  }
+
+  /* ── SECTION DIVIDERS ── */
+  .section-group {
+    margin-bottom: 2rem;
+  }
+  .group-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  .shuffle-btn {
+    padding: 0.45rem 1rem;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .shuffle-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  @media (max-width: 600px) {
+    .page { padding: 1rem; }
+    .conj-forms { grid-template-columns: 1fr; }
+    nav { padding: 0 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">げんき <span>Study</span></div>
+  <ul class="nav-tabs" id="mainNav">
+    <li class="nav-tab active" data-page="home">Lessons</li>
+    <li class="nav-tab" data-page="all-vocab">All Vocab</li>
+    <li class="nav-tab" data-page="all-verbs">All Verbs</li>
+    <li class="nav-tab" data-page="particles">Particles</li>
+  </ul>
+</nav>
+
+<!-- HOME PAGE -->
+<div class="page active" id="page-home">
+  <div class="home-hero">
+    <h1>げんき<span> I</span> Study</h1>
+    <p>Select a lesson to study vocabulary, verbs, and grammar</p>
+  </div>
+  <div class="lesson-grid" id="lessonGrid"></div>
+</div>
+
+<!-- LESSON DETAIL PAGE -->
+<div class="page" id="page-lesson">
+  <div class="section-header">
+    <button class="back-btn" id="backBtn">← Back</button>
+    <div class="section-title" id="lessonDetailTitle"></div>
+  </div>
+  <div class="sub-tabs" id="lessonSubTabs"></div>
+  <div id="lessonContent"></div>
+</div>
+
+<!-- ALL VOCAB PAGE -->
+<div class="page" id="page-all-vocab">
+  <div class="section-header">
+    <div class="section-title">All Vocabulary</div>
+    <button class="shuffle-btn" id="shuffleVocab">⇄ Shuffle</button>
+  </div>
+  <div class="flashcard-area" id="allVocabArea"></div>
+</div>
+
+<!-- ALL VERBS PAGE -->
+<div class="page" id="page-all-verbs">
+  <div class="section-header">
+    <div class="section-title">All Verbs — Conjugation Practice</div>
+  </div>
+  <div id="allVerbsContent"></div>
+</div>
+
+<!-- PARTICLES PAGE -->
+<div class="page" id="page-particles">
+  <div class="section-header">
+    <div class="section-title">Particles Guide</div>
+  </div>
+  <div id="particlesContent"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════
+
+const LESSONS = [
+  {
+    id: 'L0',
+    title: 'Greetings',
+    sub: 'あいさつ',
+    tags: ['phrases', 'culture'],
+    vocab: [
+      { jp: 'おはよう。', rom: 'Ohayoo.', en: 'Good morning.' },
+      { jp: 'おはようございます。', rom: 'Ohayoo gozaimasu.', en: 'Good morning. (polite)' },
+      { jp: 'こんにちは。', rom: 'Konnichiwa.', en: 'Good afternoon.' },
+      { jp: 'こんばんは。', rom: 'Konbanwa.', en: 'Good evening.' },
+      { jp: 'さようなら。', rom: 'Sayoonara.', en: 'Good-bye.' },
+      { jp: 'おやすみ(なさい)。', rom: 'Oyasumi (nasai).', en: 'Good night.' },
+      { jp: 'ありがとう。', rom: 'Arigatoo.', en: 'Thank you.' },
+      { jp: 'ありがとうございます。', rom: 'Arigatoo gozaimasu.', en: 'Thank you. (polite)' },
+      { jp: 'すみません。', rom: 'Sumimasen.', en: 'Excuse me.; I\'m sorry.' },
+      { jp: 'いいえ。', rom: 'Iie.', en: 'No.; Not at all.' },
+      { jp: 'いってきます。', rom: 'Itte kimasu.', en: 'I\'ll go and come back.' },
+      { jp: 'いってらっしゃい。', rom: 'Itterasshai.', en: 'Please go and come back.' },
+      { jp: 'ただいま。', rom: 'Tadaima.', en: 'I\'m home.' },
+      { jp: 'おかえり(なさい)。', rom: 'Okaeri (nasai).', en: 'Welcome home.' },
+      { jp: 'いただきます。', rom: 'Itadakimasu.', en: 'Thank you for the meal. (before eating)' },
+      { jp: 'ごちそうさま(でした)。', rom: 'Gochisoosama (deshita).', en: 'Thank you for the meal. (after eating)' },
+      { jp: 'はじめまして。', rom: 'Hajimemashite.', en: 'How do you do?' },
+      { jp: '〜です。', rom: '...desu.', en: 'I am....' },
+      { jp: 'よろしくおねがいします。', rom: 'Yoroshiku onegai shimasu.', en: 'Nice to meet you.' },
+    ],
+    verbs: [],
+    grammar: []
+  },
+  {
+    id: 'L0-nums',
+    title: 'Numbers',
+    sub: 'すうじ',
+    tags: ['numbers'],
+    vocab: [
+      { jp: 'ぜろ / れい', rom: 'zero / ree', en: '0' },
+      { jp: 'いち', rom: 'ichi', en: '1' },
+      { jp: 'に', rom: 'ni', en: '2' },
+      { jp: 'さん', rom: 'san', en: '3' },
+      { jp: 'よん / し', rom: 'yon / shi', en: '4' },
+      { jp: 'ご', rom: 'go', en: '5' },
+      { jp: 'ろく', rom: 'roku', en: '6' },
+      { jp: 'なな / しち', rom: 'nana / shichi', en: '7' },
+      { jp: 'はち', rom: 'hachi', en: '8' },
+      { jp: 'きゅう / く', rom: 'kyuu / ku', en: '9' },
+      { jp: 'じゅう', rom: 'juu', en: '10' },
+      { jp: 'じゅういち', rom: 'juuichi', en: '11' },
+      { jp: 'じゅうに', rom: 'juuni', en: '12' },
+      { jp: 'じゅうさん', rom: 'juusan', en: '13' },
+      { jp: 'じゅうよん / じゅうし', rom: 'juuyon / juushi', en: '14' },
+      { jp: 'じゅうご', rom: 'juugo', en: '15' },
+      { jp: 'じゅうろく', rom: 'juuroku', en: '16' },
+      { jp: 'じゅうなな / じゅうしち', rom: 'juunana / juushichi', en: '17' },
+      { jp: 'じゅうはち', rom: 'juuhachi', en: '18' },
+      { jp: 'じゅうきゅう / じゅうく', rom: 'juukyuu / juuku', en: '19' },
+      { jp: 'にじゅう', rom: 'nijuu', en: '20' },
+      { jp: 'さんじゅう', rom: 'sanjuu', en: '30' },
+      { jp: 'よんじゅう', rom: 'yonjuu', en: '40' },
+      { jp: 'ごじゅう', rom: 'gojuu', en: '50' },
+      { jp: 'ろくじゅう', rom: 'rokujuu', en: '60' },
+      { jp: 'ななじゅう', rom: 'nanajuu', en: '70' },
+      { jp: 'はちじゅう', rom: 'hachijuu', en: '80' },
+      { jp: 'きゅうじゅう', rom: 'kyuujuu', en: '90' },
+      { jp: 'ひゃく', rom: 'hyaku', en: '100' },
+    ],
+    verbs: [],
+    grammar: []
+  },
+  {
+    id: 'L2',
+    title: 'Lesson 2',
+    sub: 'Things & Places',
+    tags: ['nouns', 'places', 'expressions'],
+    vocab: [
+      // Things
+      { jp: 'かさ', rom: 'kasa', en: 'umbrella', cat: 'thing' },
+      { jp: 'かばん', rom: 'kaban', en: 'bag', cat: 'thing' },
+      { jp: 'くつ', rom: 'kutsu', en: 'shoes', cat: 'thing' },
+      { jp: 'さいふ', rom: 'saifu', en: 'wallet', cat: 'thing' },
+      { jp: 'ジーンズ', rom: 'jiinzu', en: 'jeans', cat: 'thing' },
+      { jp: 'じてんしゃ', rom: 'jitensha', en: 'bicycle', cat: 'thing' },
+      { jp: 'しんぶん', rom: 'shinbun', en: 'newspaper', cat: 'thing' },
+      { jp: 'スマホ', rom: 'sumaho', en: 'smartphone; mobile', cat: 'thing' },
+      { jp: 'Tシャツ', rom: 'tiishatsu', en: 'T-shirt', cat: 'thing' },
+      { jp: 'とけい', rom: 'tokee', en: 'watch; clock', cat: 'thing' },
+      { jp: 'ノート', rom: 'nooto', en: 'notebook', cat: 'thing' },
+      { jp: 'ペン', rom: 'pen', en: 'pen', cat: 'thing' },
+      { jp: 'ぼうし', rom: 'booshi', en: 'hat; cap', cat: 'thing' },
+      { jp: 'ほん', rom: 'hon', en: 'book', cat: 'thing' },
+      // Food
+      { jp: 'おいしい', rom: 'oishii', en: 'delicious', cat: 'food' },
+      { jp: 'さかな', rom: 'sakana', en: 'fish', cat: 'food' },
+      { jp: 'とんかつ', rom: 'tonkatsu', en: 'pork cutlet', cat: 'food' },
+      { jp: 'にく', rom: 'niku', en: 'meat', cat: 'food' },
+      { jp: 'メニュー', rom: 'menyuu', en: 'menu', cat: 'food' },
+      { jp: 'やさい', rom: 'yasai', en: 'vegetable', cat: 'food' },
+      // Places
+      { jp: 'ぎんこう', rom: 'ginkoo', en: 'bank', cat: 'place' },
+      { jp: 'コンビニ', rom: 'konbini', en: 'convenience store', cat: 'place' },
+      { jp: 'トイレ', rom: 'toire', en: 'toilet; restroom', cat: 'place' },
+      { jp: 'としょかん', rom: 'toshokan', en: 'library', cat: 'place' },
+      { jp: 'ゆうびんきょく', rom: 'yuubinkyoku', en: 'post office', cat: 'place' },
+      // Countries
+      { jp: 'イギリス', rom: 'Igirisu', en: 'Britain', cat: 'country' },
+      { jp: 'かんこく', rom: 'Kankoku', en: 'Korea', cat: 'country' },
+      { jp: 'ちゅうごく', rom: 'Chuugoku', en: 'China', cat: 'country' },
+      // Demonstratives
+      { jp: 'これ', rom: 'kore', en: 'this one', cat: 'demo' },
+      { jp: 'それ', rom: 'sore', en: 'that one', cat: 'demo' },
+      { jp: 'あれ', rom: 'are', en: 'that one (over there)', cat: 'demo' },
+      { jp: 'どれ', rom: 'dore', en: 'which one', cat: 'demo' },
+      { jp: 'この', rom: 'kono', en: 'this...', cat: 'demo' },
+      { jp: 'その', rom: 'sono', en: 'that...', cat: 'demo' },
+      { jp: 'あの', rom: 'ano', en: 'that... (over there)', cat: 'demo' },
+      { jp: 'どの', rom: 'dono', en: 'which...', cat: 'demo' },
+      { jp: 'ここ', rom: 'koko', en: 'here', cat: 'demo' },
+      { jp: 'そこ', rom: 'soko', en: 'there', cat: 'demo' },
+      { jp: 'あそこ', rom: 'asoko', en: 'over there', cat: 'demo' },
+      { jp: 'どこ', rom: 'doko', en: 'where', cat: 'demo' },
+      { jp: 'だれ', rom: 'dare', en: 'who', cat: 'demo' },
+      // Majors / Fields
+      { jp: 'えいご', rom: 'eego', en: 'English (language)', cat: 'major' },
+      { jp: 'けいざい', rom: 'keezai', en: 'economics', cat: 'major' },
+      { jp: 'コンピューター', rom: 'konpyuutaa', en: 'computer', cat: 'major' },
+      { jp: 'ビジネス', rom: 'bijinesu', en: 'business', cat: 'major' },
+      { jp: 'れきし', rom: 'rekishi', en: 'history', cat: 'major' },
+      // Family
+      { jp: 'おかあさん', rom: 'okaasan', en: 'mother', cat: 'family' },
+      { jp: 'おとうさん', rom: 'otoosan', en: 'father', cat: 'family' },
+      // Money
+      { jp: 'いくら', rom: 'ikura', en: 'how much', cat: 'money' },
+      { jp: '〜えん', rom: '...en', en: '...yen', cat: 'money' },
+      { jp: 'たかい', rom: 'takai', en: 'expensive; high', cat: 'money' },
+      // Expressions
+      { jp: 'いらっしゃいませ', rom: 'irasshaimase', en: 'Welcome (to our store).', cat: 'expr' },
+      { jp: '(〜を)おねがいします', rom: '(...o) onegaishimasu', en: '....please.', cat: 'expr' },
+      { jp: '(〜を)ください', rom: '(...o) kudasai', en: 'Please give me...', cat: 'expr' },
+      { jp: 'じゃあ', rom: 'jaa', en: 'then...; if that is the case...', cat: 'expr' },
+      { jp: 'どうぞ', rom: 'doozo', en: 'Please.; Here it is.', cat: 'expr' },
+      { jp: 'どうも', rom: 'doomo', en: 'Thank you.', cat: 'expr' },
+    ],
+    verbs: [],
+    grammar: ['XはYです', 'XのY', 'これ/それ/あれ/どれ', 'この/その/あの/どの']
+  },
+  {
+    id: 'L3',
+    title: 'Lesson 3',
+    sub: 'Activities & Daily Life',
+    tags: ['verbs', 'time', 'nouns'],
+    vocab: [
+      // Entertainment & Sports
+      { jp: '映画', rom: 'eega', en: 'movie', cat: 'noun' },
+      { jp: '音楽', rom: 'ongaku', en: 'music', cat: 'noun' },
+      { jp: '雑誌', rom: 'zasshi', en: 'magazine', cat: 'noun' },
+      { jp: 'スポーツ', rom: 'supootsu', en: 'sports', cat: 'noun' },
+      { jp: 'デート', rom: 'deeto', en: 'date (romantic)', cat: 'noun' },
+      { jp: 'テニス', rom: 'tenisu', en: 'tennis', cat: 'noun' },
+      { jp: 'テレビ', rom: 'terebi', en: 'TV', cat: 'noun' },
+      // Food & Drinks
+      { jp: 'アイスクリーム', rom: 'aisukuriimu', en: 'ice cream', cat: 'food' },
+      { jp: 'ハンバーガー', rom: 'hanbaagaa', en: 'hamburger', cat: 'food' },
+      { jp: 'お酒', rom: 'osake', en: 'sake; alcoholic drink', cat: 'food' },
+      { jp: 'お茶', rom: 'ocha', en: 'green tea', cat: 'food' },
+      { jp: 'コーヒー', rom: 'koohii', en: 'coffee', cat: 'food' },
+      { jp: '水', rom: 'mizu', en: 'water', cat: 'food' },
+      { jp: '朝ご飯', rom: 'asagohan', en: 'breakfast', cat: 'food' },
+      { jp: '昼ご飯', rom: 'hirugohan', en: 'lunch', cat: 'food' },
+      { jp: '晩ご飯', rom: 'bangohan', en: 'dinner', cat: 'food' },
+      // Places
+      { jp: '家 / いえ', rom: 'ie / uchi', en: 'home; house', cat: 'place' },
+      { jp: '学校', rom: 'gakkoo', en: 'school', cat: 'place' },
+      { jp: 'カフェ', rom: 'kafe', en: 'cafe', cat: 'place' },
+      // Time
+      { jp: '明日', rom: 'ashita', en: 'tomorrow', cat: 'time' },
+      { jp: '今日', rom: 'kyoo', en: 'today', cat: 'time' },
+      { jp: '朝', rom: 'asa', en: 'morning', cat: 'time' },
+      { jp: '今晩', rom: 'konban', en: 'tonight', cat: 'time' },
+      { jp: '毎日', rom: 'mainichi', en: 'every day', cat: 'time' },
+      { jp: '毎晩', rom: 'maiban', en: 'every night', cat: 'time' },
+      { jp: '週末', rom: 'shuumatsu', en: 'weekend', cat: 'time' },
+      { jp: '土曜日', rom: 'doyoobi', en: 'Saturday', cat: 'time' },
+      { jp: '日曜日', rom: 'nichiyoobi', en: 'Sunday', cat: 'time' },
+      { jp: 'いつ', rom: 'itsu', en: 'when', cat: 'time' },
+      { jp: '〜ごろ', rom: '...goro', en: 'at about...', cat: 'time' },
+      // Adjectives
+      { jp: 'いい', rom: 'ii', en: 'good', cat: 'adj' },
+      { jp: '早い', rom: 'hayai', en: 'early', cat: 'adj' },
+      // Adverbs
+      { jp: 'あまり＋neg', rom: 'amari + negative', en: 'not much', cat: 'adv' },
+      { jp: 'ぜんぜん＋neg', rom: 'zenzen + negative', en: 'not at all', cat: 'adv' },
+      { jp: 'たいてい', rom: 'taitei', en: 'usually', cat: 'adv' },
+      { jp: 'ちょっと', rom: 'chotto', en: 'a little', cat: 'adv' },
+      { jp: 'ときどき', rom: 'tokidoki', en: 'sometimes', cat: 'adv' },
+      { jp: 'よく', rom: 'yoku', en: 'often; much', cat: 'adv' },
+      // Expressions
+      { jp: 'そうですね', rom: 'soo desu ne', en: 'That\'s right.; Let me see.', cat: 'expr' },
+      { jp: 'でも', rom: 'demo', en: 'but', cat: 'expr' },
+      { jp: 'どうですか', rom: 'doo desu ka', en: 'How about...?; How is...?', cat: 'expr' },
+      { jp: 'ええ', rom: 'ee', en: 'yes', cat: 'expr' },
+    ],
+    verbs: [
+      { jp: '行く', rom: 'iku', en: 'to go (destination に/へ)', type: 'u' },
+      { jp: '帰る', rom: 'kaeru', en: 'to go back; to return (destination に/へ)', type: 'u' },
+      { jp: '聞く', rom: 'kiku', en: 'to listen; to hear (~を)', type: 'u' },
+      { jp: '飲む', rom: 'nomu', en: 'to drink (~を)', type: 'u' },
+      { jp: '話す', rom: 'hanasu', en: 'to speak; to talk (language をで)', type: 'u' },
+      { jp: '読む', rom: 'yomu', en: 'to read (~を)', type: 'u' },
+      { jp: '起きる', rom: 'okiru', en: 'to get up', type: 'ru' },
+      { jp: '食べる', rom: 'taberu', en: 'to eat (~を)', type: 'ru' },
+      { jp: '寝る', rom: 'neru', en: 'to sleep; to go to sleep', type: 'ru' },
+      { jp: '見る', rom: 'miru', en: 'to see; to look at; to watch (~を)', type: 'ru' },
+      { jp: '来る', rom: 'kuru', en: 'to come (destination に/へ)', type: 'irr' },
+      { jp: 'する', rom: 'suru', en: 'to do (~を)', type: 'irr' },
+      { jp: '勉強する', rom: 'benkyoosuru', en: 'to study (~を)', type: 'irr' },
+    ],
+    grammar: ['〜をします', 'Xにいきます', 'Verb stem + ます/ません/ました/ませんでした']
+  },
+  {
+    id: 'L4',
+    title: 'Lesson 4',
+    sub: 'Location & Daily Life',
+    tags: ['location', 'verbs', 'time'],
+    vocab: [
+      // People & Things
+      { jp: 'あなた', rom: 'anata', en: 'you', cat: 'person' },
+      { jp: '犬', rom: 'inu', en: 'dog', cat: 'person' },
+      { jp: '猫', rom: 'neko', en: 'cat', cat: 'person' },
+      { jp: '人', rom: 'hito', en: 'person', cat: 'person' },
+      { jp: '子供', rom: 'kodomo', en: 'child', cat: 'person' },
+      { jp: '机', rom: 'tsukue', en: 'desk', cat: 'thing' },
+      { jp: '椅子', rom: 'isu', en: 'chair', cat: 'thing' },
+      { jp: '写真', rom: 'shashin', en: 'picture; photograph', cat: 'thing' },
+      { jp: '花', rom: 'hana', en: 'flower', cat: 'thing' },
+      { jp: '紙', rom: 'kami', en: '(term) paper', cat: 'thing' },
+      { jp: 'ご飯', rom: 'gohan', en: 'rice; meal', cat: 'thing' },
+      { jp: 'パン', rom: 'pan', en: 'bread', cat: 'thing' },
+      { jp: 'ゲーム', rom: 'geemu', en: 'game', cat: 'noun' },
+      { jp: 'アルバイト', rom: 'arubaito', en: 'part-time job (colloquial)', cat: 'noun' },
+      { jp: 'クラス', rom: 'kurasu', en: 'class', cat: 'noun' },
+      { jp: '買い物', rom: 'kaimono', en: 'shopping', cat: 'noun' },
+      // Places
+      { jp: 'お寺', rom: 'otera', en: 'temple', cat: 'place' },
+      { jp: '公園', rom: 'kooen', en: 'park', cat: 'place' },
+      { jp: 'スーパー', rom: 'suupaa', en: 'supermarket', cat: 'place' },
+      { jp: 'バス停', rom: 'basutee', en: 'bus stop', cat: 'place' },
+      { jp: '病院', rom: 'byooin', en: 'hospital', cat: 'place' },
+      { jp: 'ホテル', rom: 'hoteru', en: 'hotel', cat: 'place' },
+      { jp: '本屋', rom: 'honya', en: 'bookstore', cat: 'place' },
+      { jp: '町', rom: 'machi', en: 'town; city', cat: 'place' },
+      { jp: 'レストラン', rom: 'resutoran', en: 'restaurant', cat: 'place' },
+      // Time
+      { jp: '昨日', rom: 'kinoo', en: 'yesterday', cat: 'time' },
+      { jp: '〜時間', rom: '...jikan', en: '...hours', cat: 'time' },
+      { jp: '一時間', rom: 'ichijikan', en: 'one hour', cat: 'time' },
+      { jp: '先週', rom: 'senshuu', en: 'last week', cat: 'time' },
+      { jp: '〜のとき', rom: '...no toki', en: 'when...; at the time of...', cat: 'time' },
+      { jp: '月曜日', rom: 'getsuyoobi', en: 'Monday', cat: 'time' },
+      { jp: '火曜日', rom: 'kayoobi', en: 'Tuesday', cat: 'time' },
+      { jp: '水曜日', rom: 'suiyoobi', en: 'Wednesday', cat: 'time' },
+      { jp: '木曜日', rom: 'mokuyoobi', en: 'Thursday', cat: 'time' },
+      { jp: '金曜日', rom: 'kin\'yoobi', en: 'Friday', cat: 'time' },
+      // Location words
+      { jp: 'みぎ (右)', rom: 'migi', en: 'right (~の)', cat: 'location' },
+      { jp: 'ひだり (左)', rom: 'hidari', en: 'left (~の)', cat: 'location' },
+      { jp: 'まえ (前)', rom: 'mae', en: 'front (~の)', cat: 'location' },
+      { jp: 'うしろ (後ろ)', rom: 'ushiro', en: 'back (~の)', cat: 'location' },
+      { jp: 'なか (中)', rom: 'naka', en: 'inside (~の)', cat: 'location' },
+      { jp: 'うえ (上)', rom: 'ue', en: 'on (~の)', cat: 'location' },
+      { jp: 'した (下)', rom: 'shita', en: 'under (~の)', cat: 'location' },
+      { jp: 'ちかく (近く)', rom: 'chikaku', en: 'near; nearby (~の)', cat: 'location' },
+      { jp: 'となり (隣)', rom: 'tonari', en: 'next (~の)', cat: 'location' },
+      { jp: 'あいだ (間)', rom: 'aida', en: 'between (AとBの)', cat: 'location' },
+      // Adverbs & Expressions
+      { jp: 'たくさん', rom: 'takusan', en: 'many; a lot', cat: 'adv' },
+      { jp: 'だから', rom: 'dakara', en: 'so; therefore', cat: 'adv' },
+      { jp: 'でも', rom: 'demo', en: 'but', cat: 'expr' },
+      { jp: '〜くらい', rom: '...kurai', en: 'about (approximate measurement)', cat: 'expr' },
+      { jp: 'もしわけありません', rom: 'mooshiwake arimasen', en: 'I\'m sorry.', cat: 'expr' },
+      { jp: 'そして', rom: 'soshite', en: 'and then', cat: 'expr' },
+      { jp: 'ひとりで', rom: 'hitoride', en: 'alone', cat: 'adv' },
+      { jp: 'なぜ', rom: 'naze', en: 'why', cat: 'adv' },
+      { jp: '〜と一緒に', rom: '...to isshoni', en: 'together with (a person)', cat: 'expr' },
+      { jp: 'もしもし', rom: 'moshimoshi', en: 'Hello? (on the phone)', cat: 'expr' },
+    ],
+    verbs: [
+      { jp: '会う', rom: 'au', en: 'to meet; to see (a person)', type: 'u' },
+      { jp: 'ある', rom: 'aru', en: '(place に) there is... (thing が)', type: 'u' },
+      { jp: '買う', rom: 'kau', en: 'to buy (person に, thing を)', type: 'u' },
+      { jp: '書く', rom: 'kaku', en: 'to write (person に, thing を)', type: 'u' },
+      { jp: '撮る', rom: 'toru', en: 'to take (a picture) (~を)', type: 'u' },
+      { jp: '待つ', rom: 'matsu', en: 'to wait (~を)', type: 'u' },
+      { jp: '分かる', rom: 'wakaru', en: 'to understand (~が)', type: 'u' },
+      { jp: 'いる', rom: 'iru', en: '(place に) (person が) is... / stays at...', type: 'ru' },
+    ],
+    grammar: ['〜にあります / います', 'Xはどこですか', 'Location words ~の右/左...']
+  }
+];
+
+// Conjugation rules
+function conjugate(verb) {
+  const { rom, type } = verb;
+  if (type === 'irr') {
+    if (rom === 'kuru') return { pres: '来ます', presNeg: '来ません', past: '来ました', pastNeg: '来ませんでした', te: '来て' };
+    if (rom === 'suru' || rom === 'benkyoosuru') {
+      const pre = rom === 'benkyoosuru' ? '勉強' : '';
+      return { pres: pre+'します', presNeg: pre+'しません', past: pre+'しました', pastNeg: pre+'しませんでした', te: pre+'して' };
+    }
+  }
+  const jp = verb.jp.replace(/する$/, '').replace(/[（(].*[)）]/g, '').trim();
+  const base = jp.slice(0, -1);
+  const last = jp.slice(-1);
+
+  if (type === 'ru') {
+    return { pres: base+'ます', presNeg: base+'ません', past: base+'ました', pastNeg: base+'ませんでした', te: base+'て' };
+  }
+  // U-verbs
+  const uConj = { 'く': ['き','い'], 'ぐ': ['ぎ','い'], 'す': ['し','し'], 'つ': ['ち','っ'], 'ぬ': ['に','ん'], 'ぶ': ['び','ん'], 'む': ['み','ん'], 'う': ['い','っ'], 'る': ['り','っ'], 'く': ['き','い'] };
+  const stem = uConj[last]?.[0] || last;
+  const teEnding = uConj[last]?.[0] === 'し' ? 'て' : (uConj[last]?.[1] === 'っ' ? 'って' : (uConj[last]?.[1] === 'ん' ? 'んで' : 'いて'));
+  let te = base + (uConj[last]?.[0] === 'し' ? 'して' : (last === 'く' ? 'いて' : (last === 'ぐ' ? 'いで' : (['ぬ','ぶ','む'].includes(last) ? (base + 'んで') : (['つ','う','る'].includes(last) ? (base + 'って') : (base + 'いて'))))));
+  return { pres: base+stem+'ます', presNeg: base+stem+'ません', past: base+stem+'ました', pastNeg: base+stem+'ませんでした', te };
+}
+
+// Particles
+const PARTICLES = [
+  { jp: 'は', name: 'Topic marker (wa)', desc: 'Marks the topic of the sentence. "As for X..."', examples: ['わたしは学生です。 → As for me, I am a student.', 'これは本です。 → This is a book.'] },
+  { jp: 'が', name: 'Subject marker', desc: 'Marks the grammatical subject. Used with あります/います and in questions with どれ/だれ/なに.', examples: ['猫がいます。 → There is a cat.', '犬がいます。 → The dog is there.'] },
+  { jp: 'を', name: 'Object marker (o)', desc: 'Marks the direct object of an action verb.', examples: ['コーヒーを飲みます。 → I drink coffee.', '本を読みます。 → I read a book.'] },
+  { jp: 'に', name: 'Destination/Time/Location (ni)', desc: 'Marks destination (going TO), time (AT), or the location of existence (at/in).', examples: ['学校に行きます。 → I go TO school.', '七時に起きます。 → I wake up AT 7 o\'clock.', '机にあります。 → It is AT the desk.'] },
+  { jp: 'で', name: 'Location of action / Means (de)', desc: 'Marks where an action takes place, or the means/instrument used.', examples: ['図書館で勉強します。 → I study AT the library.', '日本語で話す。 → Speak in Japanese.'] },
+  { jp: 'へ', name: 'Direction marker (e)', desc: 'Marks direction of movement. Similar to に but emphasizes the direction.', examples: ['東京へ行く。 → Go toward Tokyo.'] },
+  { jp: 'の', name: 'Possessive / Noun modifier (no)', desc: 'Connects nouns. Like "\'s" in English. Also used with location words.', examples: ['私のかばん → my bag', '机の上 → on top of the desk'] },
+  { jp: 'と', name: 'And / Together with (to)', desc: 'Lists nouns (X and Y), or marks who you do something with.', examples: ['猫と犬 → a cat and a dog', '友達と行く → go with a friend'] },
+  { jp: 'も', name: 'Also / Too (mo)', desc: 'Replaces は or が to mean "also" or "too".', examples: ['私も学生です。 → I am also a student.'] },
+  { jp: 'か', name: 'Question marker (ka)', desc: 'Added to the end of a sentence to form a question.', examples: ['学生ですか。 → Are you a student?', 'どこに行きますか。 → Where are you going?'] },
+  { jp: 'よ', name: 'Emphasis / Assertion (yo)', desc: 'Added at end of sentence to assert information or give new info to the listener.', examples: ['これはおいしいですよ。 → This is delicious! (I\'m telling you)'] },
+  { jp: 'ね', name: 'Seeking agreement (ne)', desc: 'Added at end to seek confirmation or express shared feeling. Like "right?" or "isn\'t it?".', examples: ['いいですね。 → That\'s nice, isn\'t it?'] },
+];
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let currentPage = 'home';
+let currentLesson = null;
+let currentSubTab = 'flashcard';
+let cardIndex = 0;
+let cardFlipped = false;
+let cardDeck = [];
+let cardDirection = 'jp'; // 'jp' = show JP first, 'en' = show EN first
+let quizIndex = 0;
+let quizScore = 0;
+let quizAnswered = false;
+
+// ═══════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const page = tab.dataset.page;
+    showPage(page);
+  });
+});
+
+document.getElementById('backBtn').addEventListener('click', () => showPage('home'));
+
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelector(`.nav-tab[data-page="${page}"]`)?.classList.add('active');
+  currentPage = page;
+
+  if (page === 'all-vocab') renderAllVocab();
+  if (page === 'all-verbs') renderAllVerbs();
+  if (page === 'particles') renderParticles();
+}
+
+// ═══════════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════════
+function renderHome() {
+  const grid = document.getElementById('lessonGrid');
+  grid.innerHTML = LESSONS.map(l => `
+    <div class="lesson-card" onclick="openLesson('${l.id}')">
+      <div class="lesson-num">${l.id}</div>
+      <div class="lesson-title">${l.title}</div>
+      <div class="lesson-sub">${l.sub}</div>
+      <div class="lesson-tags">
+        ${l.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+        <span class="tag">${l.vocab.length} words</span>
+        ${l.verbs.length ? `<span class="tag">${l.verbs.length} verbs</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════
+// LESSON DETAIL
+// ═══════════════════════════════════════════════
+function openLesson(id) {
+  currentLesson = LESSONS.find(l => l.id === id);
+  document.getElementById('lessonDetailTitle').textContent = `${currentLesson.id} — ${currentLesson.title}`;
+
+  const tabs = ['flashcard', 'table', ...(currentLesson.verbs.length ? ['verbs', 'quiz'] : [])];
+  const tabLabels = { flashcard: '🃏 Flashcards', table: '📋 Word List', verbs: '⚡ Verbs', quiz: '🎯 Quiz' };
+
+  document.getElementById('lessonSubTabs').innerHTML = tabs.map(t =>
+    `<button class="sub-tab ${t === 'flashcard' ? 'active' : ''}" onclick="switchSubTab('${t}')">${tabLabels[t]}</button>`
+  ).join('');
+
+  currentSubTab = 'flashcard';
+  cardIndex = 0;
+  cardFlipped = false;
+  cardDeck = shuffle([...currentLesson.vocab]);
+  renderLessonContent();
+  showPage('lesson');
+  document.querySelector('.nav-tab[data-page="lesson"]')?.classList.add('active');
+}
+
+function switchSubTab(tab) {
+  currentSubTab = tab;
+  cardIndex = 0;
+  cardFlipped = false;
+  quizIndex = 0; quizScore = 0; quizAnswered = false;
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.sub-tab[onclick="switchSubTab('${tab}')"]`).classList.add('active');
+  renderLessonContent();
+}
+
+function renderLessonContent() {
+  const el = document.getElementById('lessonContent');
+  if (currentSubTab === 'flashcard') el.innerHTML = renderFlashcardHTML(currentLesson.vocab, cardIndex);
+  if (currentSubTab === 'table') el.innerHTML = renderVocabTable(currentLesson.vocab);
+  if (currentSubTab === 'verbs') el.innerHTML = renderVerbCards(currentLesson.verbs);
+  if (currentSubTab === 'quiz') el.innerHTML = renderQuizHTML(currentLesson.vocab, quizIndex);
+}
+
+// ═══════════════════════════════════════════════
+// FLASHCARD
+// ═══════════════════════════════════════════════
+function renderFlashcardHTML(deck, idx) {
+  const card = deck[idx] || deck[0];
+  const total = deck.length;
+  const pct = Math.round(((idx + 1) / total) * 100);
+  const front = cardDirection === 'jp' ? card.jp : card.en;
+  const backMain = cardDirection === 'jp' ? card.en : card.jp;
+  const backSub = cardDirection === 'jp' ? (card.rom || '') : (card.rom || '');
+
+  return `
+    <div class="flashcard-area">
+      <div class="progress-label"><span>${idx + 1} / ${total}</span><span>${pct}%</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+      <div class="card-mode-toggle">
+        Direction:
+        <button class="toggle-btn ${cardDirection === 'jp' ? 'active' : ''}" onclick="setCardDir('jp')">JP → EN</button>
+        <button class="toggle-btn ${cardDirection === 'en' ? 'active' : ''}" onclick="setCardDir('en')">EN → JP</button>
+      </div>
+      <div class="card-3d">
+        <div class="card-inner ${cardFlipped ? 'flipped' : ''}" id="cardInner" onclick="flipCard()">
+          <div class="card-face card-front">
+            <div class="card-hint">${cardDirection === 'jp' ? 'Japanese' : 'English'} — tap to reveal</div>
+            <div class="card-main">${front}</div>
+            ${card.cat ? `<div class="card-sub">${card.cat}</div>` : ''}
+            <div class="card-tap">tap to flip</div>
+          </div>
+          <div class="card-face card-back">
+            <div class="card-hint">${cardDirection === 'jp' ? 'English' : 'Japanese'}</div>
+            <div class="card-main">${backMain}</div>
+            ${backSub ? `<div class="card-sub">${backSub}</div>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="card-controls">
+        <button class="card-btn nav" onclick="prevCard()">← Prev</button>
+        <button class="card-btn nav" onclick="shuffleCards()">⇄ Shuffle</button>
+        <button class="card-btn nav" onclick="nextCard()">Next →</button>
+      </div>
+    </div>
+  `;
+}
+
+function flipCard() {
+  cardFlipped = !cardFlipped;
+  const inner = document.getElementById('cardInner');
+  if (inner) inner.classList.toggle('flipped', cardFlipped);
+}
+function nextCard() {
+  cardFlipped = false;
+  const deck = currentSubTab === 'flashcard' ? (currentLesson?.vocab || cardDeck) : cardDeck;
+  cardIndex = (cardIndex + 1) % deck.length;
+  renderLessonContent();
+}
+function prevCard() {
+  cardFlipped = false;
+  const deck = currentLesson?.vocab || cardDeck;
+  cardIndex = (cardIndex - 1 + deck.length) % deck.length;
+  renderLessonContent();
+}
+function shuffleCards() {
+  if (currentLesson) {
+    currentLesson.vocab = shuffle([...currentLesson.vocab]);
+    cardIndex = 0; cardFlipped = false;
+    renderLessonContent();
+  } else {
+    cardDeck = shuffle([...cardDeck]);
+    cardIndex = 0; cardFlipped = false;
+    renderAllVocab();
+  }
+}
+function setCardDir(dir) {
+  cardDirection = dir;
+  cardFlipped = false;
+  renderLessonContent();
+}
+
+// ═══════════════════════════════════════════════
+// VOCAB TABLE
+// ═══════════════════════════════════════════════
+function renderVocabTable(vocab) {
+  return `
+    <div style="overflow-x:auto">
+    <table class="vocab-table">
+      <thead><tr><th>Japanese</th><th>Romaji</th><th>English</th><th>Type</th></tr></thead>
+      <tbody>
+        ${vocab.map(v => `
+          <tr>
+            <td><span class="jp">${v.jp}</span></td>
+            <td><span class="rom">${v.rom || ''}</span></td>
+            <td>${v.en}</td>
+            <td>${v.cat ? `<span class="cat-badge">${v.cat}</span>` : ''}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════
+// VERB CONJUGATION CARDS
+// ═══════════════════════════════════════════════
+function renderVerbCards(verbs) {
+  if (!verbs.length) return '<div class="empty-state">No verbs in this lesson yet.</div>';
+  return `<div class="conj-grid">` + verbs.map(v => {
+    const c = conjugate(v);
+    const typeLabel = v.type === 'u' ? 'U-verb' : v.type === 'ru' ? 'Ru-verb' : 'Irregular';
+    const typeClass = 'type-' + v.type;
+    return `
+      <div class="conj-card">
+        <span class="conj-type ${typeClass}">${typeLabel}</span>
+        <div class="conj-verb">${v.jp}</div>
+        <div class="conj-rom">${v.rom} — ${v.en}</div>
+        <div class="conj-forms">
+          <div><div class="form-label">Present</div><div class="form-val">${c.pres}</div></div>
+          <div><div class="form-label">Present Neg</div><div class="form-val form-neg">${c.presNeg}</div></div>
+          <div><div class="form-label">Past</div><div class="form-val">${c.past}</div></div>
+          <div><div class="form-label">Past Neg</div><div class="form-val form-neg">${c.pastNeg}</div></div>
+          <div><div class="form-label">Te-form</div><div class="form-val">${c.te}</div></div>
+          <div><div class="form-label">Type</div><div class="form-val" style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--muted)">${v.type}-verb</div></div>
+        </div>
+      </div>
+    `;
+  }).join('') + '</div>';
+}
+
+// ═══════════════════════════════════════════════
+// QUIZ
+// ═══════════════════════════════════════════════
+function renderQuizHTML(vocab, idx) {
+  const pool = vocab.filter(v => v.jp && v.en);
+  if (!pool.length) return '<div class="empty-state">No quiz items.</div>';
+  const qi = idx % pool.length;
+  const correct = pool[qi];
+  const others = shuffle(pool.filter((_, i) => i !== qi)).slice(0, 3);
+  const options = shuffle([correct, ...others]);
+
+  return `
+    <div class="flashcard-area">
+      <div class="progress-label">
+        <span>Question ${qi + 1} / ${pool.length}</span>
+        <span>Score: ${quizScore}</span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar" style="width:${Math.round(((qi+1)/pool.length)*100)}%"></div></div>
+      <div class="quiz-question">
+        <div class="quiz-q-sub">What does this mean?</div>
+        <div class="quiz-q-text">${correct.jp}</div>
+        ${correct.rom ? `<div style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--muted)">${correct.rom}</div>` : ''}
+      </div>
+      <div class="quiz-options" id="quizOpts">
+        ${options.map((o, i) => `<button class="quiz-opt" id="qopt${i}" onclick="answerQuiz('${o.en.replace(/'/g,"\\'")}','${correct.en.replace(/'/g,"\\'")}',${i})">${o.en}</button>`).join('')}
+      </div>
+      <div class="quiz-feedback" id="quizFeedback"></div>
+      <div class="score-display">Score: ${quizScore} / ${qi}</div>
+    </div>
+  `;
+}
+
+function answerQuiz(chosen, correct, idx) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+  const fb = document.getElementById('quizFeedback');
+  document.querySelectorAll('.quiz-opt').forEach(b => b.disabled = true);
+  document.querySelectorAll('.quiz-opt').forEach((b, i) => {
+    if (b.textContent.trim() === correct) b.classList.add('correct');
+  });
+  if (chosen === correct) {
+    quizScore++;
+    fb.innerHTML = '<span class="feedback-correct">✓ Correct!</span>';
+  } else {
+    document.querySelectorAll('.quiz-opt')[idx]?.classList.add('wrong');
+    fb.innerHTML = `<span class="feedback-wrong">✗ Correct: ${correct}</span>`;
+  }
+  setTimeout(() => {
+    quizIndex++;
+    quizAnswered = false;
+    renderLessonContent();
+  }, 1200);
+}
+
+// ═══════════════════════════════════════════════
+// ALL VOCAB
+// ═══════════════════════════════════════════════
+function renderAllVocab() {
+  if (!cardDeck.length) {
+    cardDeck = shuffle(LESSONS.flatMap(l => l.vocab));
+  }
+  const el = document.getElementById('allVocabArea');
+  el.innerHTML = renderFlashcardHTML(cardDeck, cardIndex);
+}
+
+document.getElementById('shuffleVocab').addEventListener('click', () => {
+  cardDeck = shuffle(LESSONS.flatMap(l => l.vocab));
+  cardIndex = 0; cardFlipped = false;
+  renderAllVocab();
+});
+
+// Override nextCard/prevCard for all vocab context
+window.nextCard = function() {
+  cardFlipped = false;
+  if (currentPage === 'all-vocab') {
+    cardIndex = (cardIndex + 1) % cardDeck.length;
+    renderAllVocab();
+  } else {
+    const deck = currentLesson?.vocab || [];
+    cardIndex = (cardIndex + 1) % deck.length;
+    renderLessonContent();
+  }
+};
+window.prevCard = function() {
+  cardFlipped = false;
+  if (currentPage === 'all-vocab') {
+    cardIndex = (cardIndex - 1 + cardDeck.length) % cardDeck.length;
+    renderAllVocab();
+  } else {
+    const deck = currentLesson?.vocab || [];
+    cardIndex = (cardIndex - 1 + deck.length) % deck.length;
+    renderLessonContent();
+  }
+};
+window.flipCard = flipCard;
+window.shuffleCards = function() {
+  if (currentPage === 'all-vocab') {
+    cardDeck = shuffle([...cardDeck]);
+    cardIndex = 0; cardFlipped = false;
+    renderAllVocab();
+  } else {
+    currentLesson.vocab = shuffle([...currentLesson.vocab]);
+    cardIndex = 0; cardFlipped = false;
+    renderLessonContent();
+  }
+};
+
+// ═══════════════════════════════════════════════
+// ALL VERBS
+// ═══════════════════════════════════════════════
+function renderAllVerbs() {
+  const allVerbs = LESSONS.flatMap(l => l.verbs.map(v => ({ ...v, lesson: l.id })));
+  if (!allVerbs.length) {
+    document.getElementById('allVerbsContent').innerHTML = '<div class="empty-state">No verbs loaded yet.</div>';
+    return;
+  }
+  // Group by lesson
+  const byLesson = {};
+  allVerbs.forEach(v => { if (!byLesson[v.lesson]) byLesson[v.lesson] = []; byLesson[v.lesson].push(v); });
+  document.getElementById('allVerbsContent').innerHTML = Object.entries(byLesson).map(([lid, verbs]) => `
+    <div class="section-group">
+      <div class="group-label">${lid} — ${LESSONS.find(l=>l.id===lid)?.title}</div>
+      ${renderVerbCards(verbs)}
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════
+// PARTICLES
+// ═══════════════════════════════════════════════
+function renderParticles() {
+  document.getElementById('particlesContent').innerHTML = `
+    <div class="particle-list">
+      ${PARTICLES.map(p => `
+        <div class="particle-card">
+          <div class="particle-name">${p.name}</div>
+          <div class="particle-jp">${p.jp}</div>
+          <div class="particle-desc">${p.desc}</div>
+          ${p.examples.map(e => `<div class="particle-ex">${e}</div>`).join('')}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// Expose globals needed by onclick
+window.openLesson = openLesson;
+window.switchSubTab = switchSubTab;
+window.setCardDir = setCardDir;
+window.answerQuiz = answerQuiz;
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+renderHome();
+cardDeck = shuffle(LESSONS.flatMap(l => l.vocab));
+</script>
+</body>
+</html>

@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electrons at Work — A Field Guide to Electricity</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161e;
+    --surface2: #1a1e2a;
+    --amber: #f5a623;
+    --amber-dim: #c47a0e;
+    --cyan: #00d4c8;
+    --red: #ff4d4d;
+    --green: #39d98a;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --border: #2a2f3e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  header {
+    position: relative;
+    padding: 80px 40px 60px;
+    text-align: center;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+  }
+  header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(245,166,35,0.12) 0%, transparent 70%);
+  }
+  .header-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--amber);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-size: clamp(2.4rem, 6vw, 4.2rem);
+    font-weight: 800;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #fff 30%, var(--amber) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 20px;
+  }
+  header p {
+    color: var(--muted);
+    font-size: 1.05rem;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  /* NAV */
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    padding: 24px 40px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: rgba(13,15,20,0.95);
+    backdrop-filter: blur(10px);
+    z-index: 100;
+  }
+  nav a {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+  nav a:hover { color: var(--amber); border-color: var(--amber); }
+
+  /* MAIN LAYOUT */
+  main { max-width: 900px; margin: 0 auto; padding: 60px 24px; }
+
+  /* SECTIONS */
+  section { margin-bottom: 80px; scroll-margin-top: 80px; }
+
+  .section-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--amber);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  h2 {
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 800;
+    margin-bottom: 24px;
+    line-height: 1.15;
+  }
+  h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--cyan);
+    margin: 28px 0 12px;
+  }
+  p { color: #b0b8c8; margin-bottom: 16px; }
+  strong { color: var(--text); }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 28px;
+    margin: 24px 0;
+  }
+  .card-amber { border-left: 3px solid var(--amber); }
+  .card-cyan  { border-left: 3px solid var(--cyan); }
+  .card-green { border-left: 3px solid var(--green); }
+  .card-red   { border-left: 3px solid var(--red); }
+
+  /* FORMULA BOX */
+  .formula {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px 24px;
+    margin: 20px 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem;
+    color: var(--amber);
+    text-align: center;
+    line-height: 2;
+  }
+  .formula span { color: var(--muted); font-size: 0.78rem; display: block; margin-top: 4px; }
+
+  /* TWO-COL */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  @media(max-width:600px){ .two-col { grid-template-columns: 1fr; } }
+
+  /* DIAGRAM / SVG containers */
+  .diagram {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 24px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .diagram-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 12px;
+  }
+
+  /* STEP LIST */
+  .steps { list-style: none; counter-reset: step; }
+  .steps li {
+    counter-increment: step;
+    padding: 14px 16px 14px 52px;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+    color: #b0b8c8;
+  }
+  .steps li:last-child { border-bottom: none; }
+  .steps li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 32px; height: 32px;
+    background: var(--amber);
+    color: #000;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    left: 12px;
+  }
+
+  /* CALLOUT */
+  .callout {
+    display: flex;
+    gap: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 18px 20px;
+    margin: 20px 0;
+  }
+  .callout-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+  .callout p { margin: 0; font-size: 0.92rem; }
+
+  /* REAL WORLD BADGE */
+  .rw-badge {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 2px;
+    background: rgba(57,217,138,0.15);
+    color: var(--green);
+    border: 1px solid rgba(57,217,138,0.3);
+    margin-bottom: 10px;
+  }
+
+  /* INTERACTIVE OHMS LAW */
+  .calculator {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 28px;
+    margin: 24px 0;
+  }
+  .calc-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 20px 0; }
+  @media(max-width:520px){ .calc-grid { grid-template-columns: 1fr; } }
+  .calc-field label {
+    display: block;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .calc-field input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .calc-field input:focus { border-color: var(--amber); }
+  .calc-result {
+    background: var(--surface);
+    border: 1px solid var(--amber);
+    border-radius: 6px;
+    padding: 14px 20px;
+    font-family: 'Space Mono', monospace;
+    color: var(--amber);
+    font-size: 1.1rem;
+    min-height: 48px;
+    display: flex; align-items: center;
+  }
+  .calc-btn {
+    background: var(--amber);
+    color: #000;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 10px 24px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: background 0.2s;
+  }
+  .calc-btn:hover { background: var(--amber-dim); }
+
+  /* ANIMATION - ELECTRON FLOW */
+  @keyframes flow {
+    0%   { stroke-dashoffset: 100; }
+    100% { stroke-dashoffset: 0; }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.6; }
+    50%       { opacity: 1; }
+  }
+  .electron-wire {
+    stroke-dasharray: 8 6;
+    animation: flow 1.4s linear infinite;
+  }
+  .glow-bulb {
+    animation: pulse-glow 1.2s ease-in-out infinite;
+  }
+
+  /* CAPACITOR ANIMATION */
+  @keyframes charge {
+    0%   { height: 0; }
+    100% { height: 40px; }
+  }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.9rem; }
+  th {
+    background: var(--surface2);
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    text-align: left;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: #b0b8c8; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  /* DIVIDER */
+  hr { border: none; border-top: 1px solid var(--border); margin: 60px 0; }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 40px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-label">Field Guide · Vol. 1</div>
+  <h1>Electrons at Work</h1>
+  <p>An introductory guide to electricity, magnetism, energy storage, and circuit design — from first principles to real projects.</p>
+</header>
+
+<nav>
+  <a href="#atoms">Atoms &amp; Charge</a>
+  <a href="#ohms">Ohm's Law</a>
+  <a href="#batteries">Batteries</a>
+  <a href="#magnets">Magnetism</a>
+  <a href="#capacitors">Capacitors</a>
+  <a href="#circuits">Circuits</a>
+  <a href="#overload">Overloading</a>
+  <a href="#projects">Projects</a>
+  <a href="#realworld">Real World</a>
+</nav>
+
+<main>
+
+<!-- ============================================================ -->
+<!-- SECTION 1 — ATOMS & CHARGE -->
+<!-- ============================================================ -->
+<section id="atoms">
+  <div class="section-num">Section 01</div>
+  <h2>What is Electricity?</h2>
+
+  <p>Everything is made of <strong>atoms</strong>. At the center is a <strong>nucleus</strong> (protons + neutrons). Orbiting it are <strong>electrons</strong> — tiny, negatively charged particles. Electricity is simply the <em>movement of electrons</em> from one place to another.</p>
+
+  <div class="diagram">
+    <svg width="240" height="200" viewBox="0 0 240 200">
+      <!-- nucleus -->
+      <circle cx="120" cy="100" r="22" fill="#f5a623" opacity="0.9"/>
+      <text x="120" y="105" text-anchor="middle" font-family="Space Mono" font-size="10" fill="#000">nucleus</text>
+      <!-- orbits -->
+      <ellipse cx="120" cy="100" rx="70" ry="28" fill="none" stroke="#2a2f3e" stroke-width="1.5"/>
+      <ellipse cx="120" cy="100" rx="28" ry="70" fill="none" stroke="#2a2f3e" stroke-width="1.5"/>
+      <!-- electrons -->
+      <circle cx="190" cy="100" r="7" fill="#00d4c8"/>
+      <circle cx="120" cy="30"  r="7" fill="#00d4c8"/>
+      <circle cx="50"  cy="100" r="7" fill="#00d4c8"/>
+      <circle cx="120" cy="170" r="7" fill="#00d4c8"/>
+      <text x="205" y="104" font-family="Space Mono" font-size="9" fill="#00d4c8">e⁻</text>
+      <text x="128"  y="34"  font-family="Space Mono" font-size="9" fill="#00d4c8">e⁻</text>
+    </svg>
+    <div class="diagram-label">Simplified atom — electrons orbit the nucleus</div>
+  </div>
+
+  <h3>Conductors vs. Insulators</h3>
+  <div class="two-col">
+    <div class="card card-cyan">
+      <strong>Conductor 🔌</strong><br>
+      <p style="margin-top:8px">Electrons can move freely. Examples: <em>copper wire, aluminum, gold</em>. This is why wires are copper inside.</p>
+    </div>
+    <div class="card card-red">
+      <strong>Insulator 🛡️</strong><br>
+      <p style="margin-top:8px">Electrons are tightly bound. Examples: <em>rubber, plastic, glass, air</em>. This is why wires have a rubber coat.</p>
+    </div>
+  </div>
+
+  <h3>Voltage, Current, and Resistance</h3>
+  <table>
+    <tr>
+      <th>Quantity</th><th>Symbol</th><th>Unit</th><th>Analogy</th>
+    </tr>
+    <tr>
+      <td>Voltage (electrical pressure)</td><td><strong>V</strong></td><td>Volts (V)</td><td>Water pressure in a pipe</td>
+    </tr>
+    <tr>
+      <td>Current (electron flow rate)</td><td><strong>I</strong></td><td>Amperes (A)</td><td>How much water flows per second</td>
+    </tr>
+    <tr>
+      <td>Resistance (opposition to flow)</td><td><strong>R</strong></td><td>Ohms (Ω)</td><td>How narrow the pipe is</td>
+    </tr>
+    <tr>
+      <td>Power (energy per second)</td><td><strong>P</strong></td><td>Watts (W)</td><td>How much work the water does</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 2 — OHM'S LAW -->
+<!-- ============================================================ -->
+<section id="ohms">
+  <div class="section-num">Section 02</div>
+  <h2>Ohm's Law — The Golden Rule</h2>
+
+  <p>Georg Ohm discovered that voltage, current, and resistance are tied together by a beautifully simple equation. If you know two of the three, you always know the third.</p>
+
+  <div class="formula">
+    V = I × R
+    <span>Voltage = Current × Resistance</span>
+  </div>
+
+  <p>Rearranged: &nbsp; <strong style="color:var(--amber)">I = V ÷ R</strong> &nbsp; and &nbsp; <strong style="color:var(--amber)">R = V ÷ I</strong></p>
+
+  <div class="callout">
+    <div class="callout-icon">💡</div>
+    <p><strong>Example:</strong> A 9V battery pushes current through a 470Ω resistor. How much current flows? <br>I = 9 ÷ 470 = <strong style="color:var(--cyan)">0.019 A (19 milliamps)</strong> — just enough to glow an LED safely.</p>
+  </div>
+
+  <h3>Power Formula</h3>
+  <div class="formula">
+    P = V × I
+    <span>Power (Watts) = Voltage × Current &nbsp;|&nbsp; Also: P = I² × R &nbsp;|&nbsp; P = V² ÷ R</span>
+  </div>
+
+  <h3>🔢 Interactive Calculator</h3>
+  <div class="calculator">
+    <p style="font-size:0.9rem;margin-bottom:4px">Enter any two values — leave one blank to solve for it.</p>
+    <div class="calc-grid">
+      <div class="calc-field">
+        <label>VOLTAGE (V)</label>
+        <input type="number" id="c-v" placeholder="e.g. 9">
+      </div>
+      <div class="calc-field">
+        <label>CURRENT (A)</label>
+        <input type="number" id="c-i" placeholder="e.g. 0.02">
+      </div>
+      <div class="calc-field">
+        <label>RESISTANCE (Ω)</label>
+        <input type="number" id="c-r" placeholder="e.g. 470">
+      </div>
+    </div>
+    <button class="calc-btn" onclick="solveOhms()">SOLVE</button>
+    <div class="calc-result" id="calc-out" style="margin-top:14px">Results will appear here.</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 3 — BATTERIES -->
+<!-- ============================================================ -->
+<section id="batteries">
+  <div class="section-num">Section 03</div>
+  <h2>Batteries — Stored Chemical Energy</h2>
+
+  <p>A battery doesn't store electricity directly — it stores <strong>chemical energy</strong> and converts it to electrical energy on demand through a chemical reaction. A simple battery has three parts: an <strong>anode</strong> (negative terminal), a <strong>cathode</strong> (positive terminal), and an <strong>electrolyte</strong> (the medium that lets ions travel).</p>
+
+  <div class="diagram">
+    <svg width="320" height="180" viewBox="0 0 320 180">
+      <!-- anode -->
+      <rect x="30" y="40" width="80" height="100" rx="4" fill="#2a2f3e" stroke="#f5a623" stroke-width="1.5"/>
+      <text x="70" y="85" text-anchor="middle" font-family="Space Mono" font-size="10" fill="#f5a623">ANODE</text>
+      <text x="70" y="100" text-anchor="middle" font-family="Space Mono" font-size="9" fill="#6b7280">Zinc (−)</text>
+      <!-- cathode -->
+      <rect x="210" y="40" width="80" height="100" rx="4" fill="#2a2f3e" stroke="#00d4c8" stroke-width="1.5"/>
+      <text x="250" y="85" text-anchor="middle" font-family="Space Mono" font-size="10" fill="#00d4c8">CATHODE</text>
+      <text x="250" y="100" text-anchor="middle" font-family="Space Mono" font-size="9" fill="#6b7280">MnO₂ (+)</text>
+      <!-- electrolyte -->
+      <rect x="110" y="40" width="100" height="100" rx="4" fill="rgba(245,166,35,0.08)" stroke="#f5a623" stroke-width="1" stroke-dasharray="4 3"/>
+      <text x="160" y="88" text-anchor="middle" font-family="Space Mono" font-size="9" fill="#f5a623">ELECTROLYTE</text>
+      <text x="160" y="103" text-anchor="middle" font-family="Space Mono" font-size="8" fill="#6b7280">Ions travel here</text>
+      <!-- terminals -->
+      <line x1="30" y1="90" x2="10" y2="90" stroke="#f5a623" stroke-width="2"/>
+      <text x="6" y="87" text-anchor="middle" font-family="Space Mono" font-size="12" fill="#f5a623">−</text>
+      <line x1="290" y1="90" x2="310" y2="90" stroke="#00d4c8" stroke-width="2"/>
+      <text x="314" y="87" text-anchor="middle" font-family="Space Mono" font-size="12" fill="#00d4c8">+</text>
+      <!-- electron flow label -->
+      <text x="160" y="170" text-anchor="middle" font-family="Space Mono" font-size="9" fill="#6b7280">electrons flow through external circuit −→ +</text>
+    </svg>
+    <div class="diagram-label">Basic voltaic cell / battery structure</div>
+  </div>
+
+  <h3>How to Build a Lemon Battery (Real Experiment)</h3>
+  <ul class="steps">
+    <li>Grab a fresh lemon and roll it on a table to soften it (releases juice inside).</li>
+    <li>Push a <strong>zinc nail or galvanized screw</strong> into one side — this is your anode (−).</li>
+    <li>Push a <strong>copper coin or copper wire</strong> into the other side — this is your cathode (+).</li>
+    <li>The lemon juice acts as the electrolyte, allowing ions to pass between the metals.</li>
+    <li>Connect a small LED between the two metal pieces. It should glow faintly (~0.9V per lemon). Chain 3–4 lemons in series for more voltage!</li>
+  </ul>
+
+  <h3>Battery Capacity — How Much Energy Can It Store?</h3>
+  <p>Battery capacity is measured in <strong>milliamp-hours (mAh)</strong> or <strong>amp-hours (Ah)</strong>. A 2000 mAh battery can supply 2000 mA (2A) for 1 hour, or 200 mA for 10 hours.</p>
+  <div class="formula">
+    Energy (Wh) = Capacity (Ah) × Voltage (V)
+    <span>Example: 2 Ah × 3.7 V = <strong>7.4 Watt-hours</strong> stored</span>
+  </div>
+  <div class="callout">
+    <div class="callout-icon">📱</div>
+    <p><strong>Real world:</strong> A typical iPhone battery is ~3,279 mAh at 3.85V = <strong>≈12.6 Wh</strong>. A Tesla Model 3 Long Range stores ~82,000 Wh (82 kWh) — about 6,500× more.</p>
+  </div>
+
+  <h3>Series vs. Parallel Battery Connections</h3>
+  <div class="two-col">
+    <div class="card card-amber">
+      <strong>Series (adds voltage) ⚡</strong>
+      <p style="margin-top:8px">Stack two 1.5V AA batteries end-to-end → <strong>3V total</strong>, same capacity. Used in TV remotes, flashlights.</p>
+      <div class="formula" style="font-size:0.8rem;padding:10px">V_total = V₁ + V₂ + ...</div>
+    </div>
+    <div class="card card-cyan">
+      <strong>Parallel (adds capacity) 🔋</strong>
+      <p style="margin-top:8px">Connect two batteries side-by-side → <strong>same voltage, double the capacity</strong>. Used in power banks, EVs.</p>
+      <div class="formula" style="font-size:0.8rem;padding:10px">Ah_total = Ah₁ + Ah₂ + ...</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 4 — MAGNETISM & GENERATORS -->
+<!-- ============================================================ -->
+<section id="magnets">
+  <div class="section-num">Section 04</div>
+  <h2>How Magnets Generate Electricity</h2>
+
+  <p>Michael Faraday discovered in 1831 that <strong>moving a magnet through a coil of wire creates a voltage</strong>. This is called <em>electromagnetic induction</em> — and it's how virtually all large-scale electricity is generated on Earth.</p>
+
+  <div class="diagram">
+    <svg width="340" height="160" viewBox="0 0 340 160">
+      <!-- coil representation -->
+      <rect x="100" y="50" width="140" height="60" rx="30" fill="none" stroke="#2a2f3e" stroke-width="12"/>
+      <rect x="100" y="50" width="140" height="60" rx="30" fill="none" stroke="#00d4c8" stroke-width="2"/>
+      <text x="170" y="85" text-anchor="middle" font-family="Space Mono" font-size="10" fill="#00d4c8">WIRE COIL</text>
+      <!-- magnet -->
+      <rect x="30" y="60" width="50" height="40" rx="4" fill="#f5a623" opacity="0.9"/>
+      <text x="55" y="78" text-anchor="middle" font-family="Space Mono" font-size="10" fill="#000" font-weight="bold">N</text>
+      <text x="55" y="92" text-anchor="middle" font-family="Space Mono" font-size="10" fill="#000" font-weight="bold">S</text>
+      <!-- arrow -->
+      <line x1="83" y1="80" x2="100" y2="80" stroke="#f5a623" stroke-width="2" marker-end="url(#arr)"/>
+      <defs>
+        <marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L6,3 z" fill="#f5a623"/>
+        </marker>
+      </defs>
+      <text x="20" y="145" font-family="Space Mono" font-size="9" fill="#f5a623">magnet moves →</text>
+      <!-- output wire -->
+      <line x1="240" y1="80" x2="280" y2="80" stroke="#39d98a" stroke-width="2"/>
+      <line x1="280" y1="40" x2="280" y2="120" stroke="#39d98a" stroke-width="2"/>
+      <circle cx="280" cy="60" r="14" fill="none" stroke="#39d98a" stroke-width="2"/>
+      <!-- bulb filament -->
+      <path d="M274 55 Q280 65 286 55" fill="none" stroke="#39d98a" stroke-width="1.5" class="glow-bulb"/>
+      <line x1="280" y1="67" x2="280" y2="74" stroke="#39d98a" stroke-width="1.5"/>
+      <text x="296" y="64" font-family="Space Mono" font-size="8" fill="#39d98a">💡</text>
+      <text x="250" y="145" font-family="Space Mono" font-size="9" fill="#39d98a">electricity generated</text>
+    </svg>
+    <div class="diagram-label">Faraday's Law — moving magnet induces current in coil</div>
+  </div>
+
+  <h3>Faraday's Law (simplified)</h3>
+  <div class="formula">
+    EMF = −N × (ΔΦ / Δt)
+    <span>EMF = induced voltage &nbsp;|&nbsp; N = number of coil turns &nbsp;|&nbsp; ΔΦ/Δt = how fast magnetic field changes</span>
+  </div>
+  <p><strong>In plain English:</strong> More coil turns + faster-moving magnet = higher voltage. This is why generators spin rapidly.</p>
+
+  <h3>From Magnet to Power Grid</h3>
+  <ul class="steps">
+    <li><strong>Energy source</strong> (steam from coal/nuclear, falling water, wind) spins a <strong>turbine</strong>.</li>
+    <li>The turbine rotates an <strong>electromagnet</strong> inside a huge coil assembly — the <strong>generator</strong>.</li>
+    <li>This produces <strong>AC (alternating current)</strong> — voltage that cycles back and forth at 60 Hz (US) or 50 Hz (Europe).</li>
+    <li>A <strong>transformer</strong> steps voltage up to ~500,000V for efficient long-distance transmission.</li>
+    <li>Local transformers step voltage back down to 120V/240V for your home.</li>
+  </ul>
+
+  <div class="callout">
+    <div class="callout-icon">🌊</div>
+    <p><strong>AC vs DC:</strong> Batteries produce <em>DC (direct current)</em> — electrons always flow one direction. Generators produce <em>AC</em> — electrons alternate direction. Your phone's charger converts AC from the wall to DC for the battery.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 5 — CAPACITORS -->
+<!-- ============================================================ -->
+<section id="capacitors">
+  <div class="section-num">Section 05</div>
+  <h2>Capacitors — Fast Energy Storage</h2>
+
+  <p>A capacitor stores energy in an <strong>electric field</strong> between two conductive plates separated by an insulator (called a <em>dielectric</em>). Unlike batteries, they charge and discharge almost <em>instantly</em> — but hold far less total energy.</p>
+
+  <div class="diagram">
+    <svg width="260" height="140" viewBox="0 0 260 140">
+      <!-- left plate -->
+      <rect x="90" y="20" width="12" height="100" rx="2" fill="#f5a623"/>
+      <text x="96" y="135" text-anchor="middle" font-family="Space Mono" font-size="9" fill="#f5a623">+ plate</text>
+      <!-- right plate -->
+      <rect x="158" y="20" width="12" height="100" rx="2" fill="#00d4c8"/>
+      <text x="164" y="135" text-anchor="middle" font-family="Space Mono" font-size="9" fill="#00d4c8">− plate</text>
+      <!-- dielectric -->
+      <rect x="102" y="20" width="56" height="100" fill="rgba(255,255,255,0.04)" stroke="#2a2f3e" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="130" y="73" text-anchor="middle" font-family="Space Mono" font-size="8" fill="#6b7280">dielectric</text>
+      <!-- field lines -->
+      <line x1="115" y1="40" x2="155" y2="40" stroke="#f5a623" stroke-width="1" opacity="0.5"/>
+      <line x1="115" y1="60" x2="155" y2="60" stroke="#f5a623" stroke-width="1" opacity="0.5"/>
+      <line x1="115" y1="80" x2="155" y2="80" stroke="#f5a623" stroke-width="1" opacity="0.5"/>
+      <line x1="115" y1="100" x2="155" y2="100" stroke="#f5a623" stroke-width="1" opacity="0.5"/>
+      <!-- wires -->
+      <line x1="50" y1="70" x2="90" y2="70" stroke="#39d98a" stroke-width="2"/>
+      <line x1="170" y1="70" x2="210" y2="70" stroke="#39d98a" stroke-width="2"/>
+      <text x="35" y="74" font-family="Space Mono" font-size="9" fill="#39d98a">V+</text>
+      <text x="213" y="74" font-family="Space Mono" font-size="9" fill="#39d98a">V−</text>
+    </svg>
+    <div class="diagram-label">Capacitor — charges stored on two parallel plates</div>
+  </div>
+
+  <h3>Capacitance Formula</h3>
+  <div class="formula">
+    Q = C × V
+    <span>Charge (Coulombs) = Capacitance (Farads) × Voltage (Volts)</span>
+  </div>
+  <div class="formula">
+    Energy = ½ × C × V²
+    <span>Energy stored in Joules &nbsp;|&nbsp; C in Farads &nbsp;|&nbsp; V in Volts</span>
+  </div>
+
+  <div class="callout">
+    <div class="callout-icon">⚡</div>
+    <p><strong>Example:</strong> A 1000µF (0.001F) capacitor charged to 9V stores: &nbsp; E = ½ × 0.001 × 9² = <strong style="color:var(--cyan)">0.0405 Joules</strong>. Tiny — but released in microseconds, the power can be enormous. Camera flashes use this!</p>
+  </div>
+
+  <h3>Capacitor vs. Battery — When to Use Which</h3>
+  <table>
+    <tr><th>Property</th><th>Capacitor</th><th>Battery</th></tr>
+    <tr><td>Charge/discharge speed</td><td style="color:var(--green)">Milliseconds</td><td style="color:var(--muted)">Minutes to hours</td></tr>
+    <tr><td>Energy density</td><td style="color:var(--muted)">Low</td><td style="color:var(--green)">High</td></tr>
+    <tr><td>Cycle life</td><td style="color:var(--green)">Millions of cycles</td><td style="color:var(--muted)">Hundreds to thousands</td></tr>
+    <tr><td>Best for</td><td>Filtering, flashes, power spikes</td><td>Sustained power delivery</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 6 — CIRCUITS -->
+<!-- ============================================================ -->
+<section id="circuits">
+  <div class="section-num">Section 06</div>
+  <h2>Basic Wiring &amp; Circuit Concepts</h2>
+
+  <p>A <strong>circuit</strong> is a closed loop that electrons can travel through. Break the loop anywhere and current stops flowing — that's how a switch works.</p>
+
+  <div class="diagram">
+    <svg width="340" height="200" viewBox="0 0 340 200">
+      <!-- circuit box -->
+      <!-- top wire -->
+      <line x1="60" y1="40" x2="280" y2="40" stroke="#f5a623" stroke-width="3"/>
+      <!-- right wire -->
+      <line x1="280" y1="40" x2="280" y2="160" stroke="#f5a623" stroke-width="3"/>
+      <!-- bottom wire -->
+      <line x1="60" y1="160" x2="280" y2="160" stroke="#f5a623" stroke-width="3"/>
+      <!-- left wire (battery) -->
+      <line x1="60" y1="40" x2="60" y2="70" stroke="#f5a623" stroke-width="3"/>
+      <line x1="60" y1="130" x2="60" y2="160" stroke="#f5a623" stroke-width="3"/>
+      <!-- battery symbol -->
+      <line x1="45" y1="80" x2="75" y2="80" stroke="#f5a623" stroke-width="3"/>
+      <line x1="50" y1="95" x2="70" y2="95" stroke="#f5a623" stroke-width="1.5"/>
+      <line x1="45" y1="110" x2="75" y2="110" stroke="#f5a623" stroke-width="3"/>
+      <line x1="50" y1="120" x2="70" y2="120" stroke="#f5a623" stroke-width="1.5"/>
+      <text x="16" y="102" font-family="Space Mono" font-size="9" fill="#f5a623">9V</text>
+      <!-- resistor (top middle) -->
+      <rect x="130" y="28" width="80" height="24" rx="3" fill="#2a2f3e" stroke="#00d4c8" stroke-width="1.5"/>
+      <text x="170" y="44" text-anchor="middle" font-family="Space Mono" font-size="9" fill="#00d4c8">470Ω</text>
+      <!-- LED (right side) -->
+      <polygon points="280,75 265,90 295,90" fill="#39d98a" opacity="0.8"/>
+      <line x1="265" y1="90" x2="295" y2="90" stroke="#39d98a" stroke-width="2"/>
+      <line x1="280" y1="90" x2="280" y2="110" stroke="#f5a623" stroke-width="3"/>
+      <text x="300" y="90" font-family="Space Mono" font-size="9" fill="#39d98a">LED</text>
+      <!-- switch (bottom) -->
+      <circle cx="170" cy="160" r="5" fill="none" stroke="#f5a623" stroke-width="2"/>
+      <line x1="175" y1="155" x2="195" y2="145" stroke="#f5a623" stroke-width="2"/>
+      <text x="158" y="185" font-family="Space Mono" font-size="9" fill="#f5a623">SWITCH</text>
+      <!-- electron flow arrows -->
+      <text x="155" y="32" font-family="Space Mono" font-size="8" fill="#6b7280">→ current flows</text>
+    </svg>
+    <div class="diagram-label">Simple series circuit: battery + resistor + LED + switch</div>
+  </div>
+
+  <h3>Series vs. Parallel Circuits</h3>
+  <div class="two-col">
+    <div class="card card-amber">
+      <strong>Series Circuit</strong>
+      <p style="margin-top:8px">Components in a single chain. Same current flows through all. If one breaks — <em>everything</em> goes dark. Old Christmas lights were like this.</p>
+      <div class="formula" style="font-size:0.8rem;padding:10px">R_total = R₁ + R₂ + R₃</div>
+    </div>
+    <div class="card card-cyan">
+      <strong>Parallel Circuit</strong>
+      <p style="margin-top:8px">Components in separate branches. Each gets full voltage. One fails, others keep working. Home wiring uses this.</p>
+      <div class="formula" style="font-size:0.8rem;padding:10px">1/R_total = 1/R₁ + 1/R₂</div>
+    </div>
+  </div>
+
+  <h3>Common Circuit Components</h3>
+  <table>
+    <tr><th>Component</th><th>Symbol</th><th>Function</th></tr>
+    <tr><td>Resistor</td><td style="color:var(--amber)">▭</td><td>Limits current flow</td></tr>
+    <tr><td>Capacitor</td><td style="color:var(--amber)">⊣⊢</td><td>Stores charge temporarily</td></tr>
+    <tr><td>LED</td><td style="color:var(--green)">→|</td><td>Emits light when current flows through it</td></tr>
+    <tr><td>Diode</td><td style="color:var(--green)">→|</td><td>Allows current in one direction only</td></tr>
+    <tr><td>Transistor</td><td style="color:var(--cyan)">⊿</td><td>Amplifies or switches signals</td></tr>
+    <tr><td>Switch</td><td style="color:var(--muted)">—/—</td><td>Opens or closes the circuit</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 7 — OVERLOADING -->
+<!-- ============================================================ -->
+<section id="overload">
+  <div class="section-num">Section 07</div>
+  <h2>Overloading a Circuit — Danger &amp; Protection</h2>
+
+  <p>Every wire has a <strong>maximum current rating</strong>. Push more current than it can handle and the wire <em>heats up</em> — in extreme cases, hot enough to start a fire. This is why circuit protection exists.</p>
+
+  <div class="callout">
+    <div class="callout-icon">🔥</div>
+    <p>A typical household extension cord is rated for 15A. Plugging in a 1500W heater (12.5A) + a 1200W microwave (10A) = <strong>22.5A total</strong> — well above the limit. The cord will overheat.</p>
+  </div>
+
+  <h3>Power Draw Formula</h3>
+  <div class="formula">
+    I = P ÷ V
+    <span>Current (A) = Power (W) ÷ Voltage (V) &nbsp;|&nbsp; In the US: 120V standard outlets</span>
+  </div>
+
+  <h3>Protection Devices</h3>
+  <div class="card card-red">
+    <strong>⚡ Fuse</strong>
+    <p style="margin-top:8px">A thin wire that <em>melts and breaks</em> the circuit when current exceeds its rating. One-time use. Rated in amps (e.g. 5A, 15A, 30A). Found in cars, older home panels.</p>
+  </div>
+  <div class="card card-amber">
+    <strong>🔘 Circuit Breaker</strong>
+    <p style="margin-top:8px">An electromagnetic switch that <em>trips open</em> when overloaded. Reusable — just reset it. All modern homes use a breaker panel. Each circuit in your home has a 15A or 20A breaker.</p>
+  </div>
+  <div class="card card-green">
+    <strong>🔌 GFCI Outlet</strong>
+    <p style="margin-top:8px">A Ground Fault Circuit Interrupter detects current leaking through an unintended path (like you). Trips in <em>1/30th of a second</em>. Required near water — bathrooms, kitchens, outdoors.</p>
+  </div>
+
+  <h3>Safe Load Calculation</h3>
+  <div class="formula">
+    Max safe load (W) = Breaker rating (A) × Voltage (V) × 0.8
+    <span>The 0.8 factor is the NEC 80% rule — never run a circuit above 80% capacity continuously</span>
+  </div>
+  <div class="callout">
+    <div class="callout-icon">🏠</div>
+    <p><strong>Example:</strong> A 20A / 120V circuit → max load = 20 × 120 × 0.8 = <strong style="color:var(--green)">1,920 Watts</strong>. Don't plug more than that into one circuit.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 8 — BEGINNER PROJECTS -->
+<!-- ============================================================ -->
+<section id="projects">
+  <div class="section-num">Section 08</div>
+  <h2>Beginner Projects</h2>
+
+  <!-- PROJECT 1 -->
+  <div class="card card-amber" style="margin-bottom:24px">
+    <div class="rw-badge">PROJECT 01</div>
+    <h3 style="margin-top:0;color:var(--amber)">Capacitor Flash — Charge &amp; Release an LED</h3>
+    <p><strong>What you need:</strong> 9V battery, 1000µF capacitor, 470Ω resistor, LED, push button, breadboard, jumper wires.</p>
+    <p><strong>How it works:</strong> The capacitor charges through the resistor when connected to the battery. When you press the button, it discharges instantly through the LED causing a bright, brief flash. You'll see the LED slowly dim as the capacitor drains — this is an <em>RC decay curve</em>.</p>
+    <ul class="steps" style="margin-top:12px">
+      <li>Connect (+) battery to one leg of the 470Ω resistor.</li>
+      <li>Connect other leg of resistor to (+) pin of capacitor.</li>
+      <li>Connect (−) battery to (−) capacitor pin (capacitor is now charging).</li>
+      <li>Add a push button in series with the LED across the capacitor terminals.</li>
+      <li>Press button — watch the flash and observe the glow fade over ~1 second.</li>
+    </ul>
+    <div class="formula" style="margin-top:12px;font-size:0.82rem">
+      Time constant τ = R × C = 470 × 0.001 = 0.47 seconds
+      <span>The capacitor reaches ~63% charge after one τ — and ~99% after 5τ (2.35 seconds)</span>
+    </div>
+  </div>
+
+  <!-- PROJECT 2 -->
+  <div class="card card-cyan" style="margin-bottom:24px">
+    <div class="rw-badge" style="background:rgba(0,212,200,0.15);color:var(--cyan);border-color:rgba(0,212,200,0.3)">PROJECT 02</div>
+    <h3 style="margin-top:0;color:var(--cyan)">Voltage Divider — Two Resistors, Adjustable Output</h3>
+    <p><strong>What you need:</strong> 9V battery, two resistors (any values), voltmeter.</p>
+    <p><strong>How it works:</strong> Two resistors in series split the voltage proportionally. This is how volume knobs, sensors, and microcontroller input pins work.</p>
+    <div class="formula" style="margin-top:12px;font-size:0.85rem">
+      V_out = V_in × R₂ / (R₁ + R₂)
+      <span>With 9V, R₁=1kΩ, R₂=2kΩ → V_out = 9 × 2/(1+2) = <strong>6V</strong></span>
+    </div>
+  </div>
+
+  <!-- PROJECT 3 -->
+  <div class="card card-green" style="margin-bottom:24px">
+    <div class="rw-badge">PROJECT 03</div>
+    <h3 style="margin-top:0;color:var(--green)">Hand-Crank Generator — Turn Motion into Light</h3>
+    <p><strong>What you need:</strong> Small DC motor (from a toy), LED, two wires.</p>
+    <p><strong>How it works:</strong> A DC motor run backwards <em>is</em> a generator. Spin the motor shaft by hand — the moving magnets inside induce a current. Connect an LED and watch it light up. Spin faster = brighter light.</p>
+    <p>This demonstrates Faraday's law directly. You can measure the output with a voltmeter and observe how RPM directly affects voltage.</p>
+  </div>
+
+  <!-- PROJECT 4 -->
+  <div class="card card-red">
+    <div class="rw-badge" style="background:rgba(255,77,77,0.15);color:var(--red);border-color:rgba(255,77,77,0.3)">PROJECT 04</div>
+    <h3 style="margin-top:0;color:var(--red)">Fuse Demonstration — Purposeful Overload</h3>
+    <p><strong>What you need:</strong> 9V battery, a thin strand of steel wool (0000 grade), wires. <em>Do this outdoors.</em></p>
+    <p><strong>How it works:</strong> Touch both terminals of a 9V battery to a single strand of fine steel wool. The high current through the thin wire overheats it, causing it to glow red and burn — exactly what a fuse does in a controlled way. This illustrates P = I²R heating.</p>
+    <div class="callout" style="margin-top:12px">
+      <div class="callout-icon">⚠️</div>
+      <p>Have water nearby. Keep away from flammables. This is why fuses and circuit breakers are so critical.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SECTION 9 — REAL WORLD -->
+<!-- ============================================================ -->
+<section id="realworld">
+  <div class="section-num">Section 09</div>
+  <h2>Real-World Systems</h2>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="rw-badge">ELECTRIC VEHICLES</div>
+    <h3 style="margin-top:4px;color:var(--amber)">Tesla Model 3 — Parallel Battery Packs</h3>
+    <p>The Model 3 Long Range contains ~4,400 cylindrical lithium-ion cells (21700 format) arranged in <strong>modules</strong>, which combine series (for voltage) and parallel (for capacity) connections. The total pack delivers 82 kWh at ~350–400V. A BMS (Battery Management System) monitors every cell's temperature and voltage — preventing overcharge, overdischarge, and thermal runaway. The same Ohm's Law and series/parallel rules you just learned govern a $50,000 battery system.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="rw-badge">POWER GRID</div>
+    <h3 style="margin-top:4px;color:var(--cyan)">Hoover Dam — Electromagnetic Induction at Scale</h3>
+    <p>Hoover Dam's 17 generators each contain a rotor with electromagnets spinning inside a massive coil stator. The same principle as your hand-crank motor — except each generator rotor weighs 4.5 million lbs and spins at 180 RPM. The dam produces up to <strong>2,080 megawatts</strong> — enough for ~1.3 million homes. Output transformers step voltage from ~16,500V up to 287,000V for transmission.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="rw-badge">CONSUMER ELECTRONICS</div>
+    <h3 style="margin-top:4px;color:var(--green)">Camera Flash — Capacitor Discharge</h3>
+    <p>A DSLR or strobe flash uses a large capacitor (often 300–1000µF at 300V+) charged by a small DC-DC converter. When you shoot, the capacitor dumps ~1–10 Joules through a xenon tube in microseconds — producing a burst of light that no battery could deliver at that speed. The "recycling time" you wait between flashes is the capacitor recharging from the battery. Same physics as Project 01, scaled up.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="rw-badge">HOME WIRING</div>
+    <h3 style="margin-top:4px;color:var(--red)">Your House Panel — Parallel Circuits + Breakers</h3>
+    <p>Every outlet, light, and appliance in your home runs on a <strong>parallel circuit</strong> branching from your main panel. This means each device gets full 120V (or 240V for dryers/ovens) regardless of what else is on. Each branch circuit has a <strong>circuit breaker</strong> — a resettable fuse — typically rated 15A or 20A for outlets, 30–50A for large appliances. The panel itself has a main breaker (100A–200A) protecting the whole house. The same Ohm's Law calculation from Section 2 is used by electricians every day.</p>
+  </div>
+
+  <div class="card">
+    <div class="rw-badge">RENEWABLE ENERGY</div>
+    <h3 style="margin-top:4px;color:var(--amber)">Solar + Grid-Scale Storage</h3>
+    <p>Solar panels generate DC electricity directly from photons displacing electrons (the photoelectric effect). An <strong>inverter</strong> converts this DC to AC for grid compatibility. Grid-scale battery facilities (like Moss Landing in California — 3,000 MWh) use thousands of lithium-ion battery modules in series-parallel arrangements, managed by industrial BMS systems, to store solar energy and release it at night. The Faraday, Ohm, and capacitance principles you've learned here underlie every watt of it.</p>
+  </div>
+</section>
+
+<hr>
+
+<!-- QUICK REFERENCE -->
+<section>
+  <div class="section-num">Quick Reference</div>
+  <h2>Formula Cheat Sheet</h2>
+  <div class="two-col">
+    <div>
+      <div class="formula" style="font-size:0.85rem;margin-bottom:12px">V = I × R <span>Ohm's Law</span></div>
+      <div class="formula" style="font-size:0.85rem;margin-bottom:12px">P = V × I <span>Power</span></div>
+      <div class="formula" style="font-size:0.85rem;margin-bottom:12px">Q = C × V <span>Capacitor charge</span></div>
+    </div>
+    <div>
+      <div class="formula" style="font-size:0.85rem;margin-bottom:12px">E = ½CV² <span>Capacitor energy</span></div>
+      <div class="formula" style="font-size:0.85rem;margin-bottom:12px">Energy(Wh) = Ah × V <span>Battery energy</span></div>
+      <div class="formula" style="font-size:0.85rem;margin-bottom:12px">τ = R × C <span>RC time constant</span></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  ELECTRONS AT WORK — Introductory Electronics Field Guide &nbsp;|&nbsp; Physics + EE Fundamentals
+</footer>
+
+<script>
+function solveOhms() {
+  const v = parseFloat(document.getElementById('c-v').value);
+  const i = parseFloat(document.getElementById('c-i').value);
+  const r = parseFloat(document.getElementById('c-r').value);
+  const out = document.getElementById('calc-out');
+
+  const blank = [isNaN(v), isNaN(i), isNaN(r)];
+  const blanks = blank.filter(Boolean).length;
+
+  if (blanks === 0) {
+    // All filled — check consistency and show power
+    const p = (v * i).toFixed(4);
+    out.textContent = `✓ Consistent. Power = V × I = ${p} W`;
+    return;
+  }
+  if (blanks > 1) {
+    out.textContent = 'Enter at least two values.';
+    return;
+  }
+
+  let result = '';
+  if (blank[0]) {
+    const calcV = (i * r).toFixed(4);
+    const p = (calcV * i).toFixed(4);
+    result = `V = I × R = ${i} × ${r} = ${calcV} V  |  Power = ${p} W`;
+  } else if (blank[1]) {
+    const calcI = (v / r).toFixed(6);
+    const p = (v * calcI).toFixed(4);
+    result = `I = V ÷ R = ${v} ÷ ${r} = ${calcI} A  |  Power = ${p} W`;
+  } else {
+    const calcR = (v / i).toFixed(4);
+    const p = (v * i).toFixed(4);
+    result = `R = V ÷ I = ${v} ÷ ${i} = ${calcR} Ω  |  Power = ${p} W`;
+  }
+  out.textContent = result;
+}
+
+// allow Enter key
+document.querySelectorAll('#c-v,#c-i,#c-r').forEach(el => {
+  el.addEventListener('keydown', e => { if(e.key==='Enter') solveOhms(); });
+});
+</script>
+</body>
+</html>
