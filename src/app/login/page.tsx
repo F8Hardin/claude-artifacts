@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { EmailForm } from "./email-form";
 
 export default async function LoginPage() {
   const supabase = await createClient();
@@ -11,14 +12,15 @@ export default async function LoginPage() {
 
   return (
     <main className="flex-1 flex items-center justify-center">
-      <div className="w-full max-w-sm space-y-6 text-center">
-        <div>
+      <div className="w-full max-w-sm space-y-6">
+        <div className="text-center">
           <h1 className="text-2xl font-bold tracking-tight">Sign in</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             Sign in to upload and manage your artifacts.
           </p>
         </div>
 
+        {/* GitHub OAuth */}
         <form action="/api/auth/github" method="POST">
           <button
             type="submit"
@@ -30,6 +32,16 @@ export default async function LoginPage() {
             Continue with GitHub
           </button>
         </form>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-neutral-200 dark:bg-neutral-800" />
+          <span className="text-xs text-neutral-400">or</span>
+          <div className="flex-1 h-px bg-neutral-200 dark:bg-neutral-800" />
+        </div>
+
+        {/* Email / password */}
+        <EmailForm />
       </div>
     </main>
   );
