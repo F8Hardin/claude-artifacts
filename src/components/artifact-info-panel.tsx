@@ -61,7 +61,7 @@ export function ArtifactInfoPanel({
               ) : (
                 <>by anonymous &middot; </>
               )}
-              {new Date(artifact.created_at).toLocaleDateString()}
+              {new Date(artifact.created_at).toLocaleDateString(undefined, { timeZone: "UTC" })}
             </p>
           </div>
 
