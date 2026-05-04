@@ -8,11 +8,15 @@ export async function Header() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let profile: { github_username: string | null; avatar_url: string | null } | null = null;
+  let profile: {
+    username: string | null;
+    github_username: string | null;
+    avatar_url: string | null;
+  } | null = null;
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("github_username, avatar_url")
+      .select("username, github_username, avatar_url")
       .eq("id", user.id)
       .single();
     profile = data;
@@ -49,14 +53,14 @@ export async function Header() {
                 {profile?.avatar_url && (
                   <Image
                     src={profile.avatar_url}
-                    alt={profile.github_username ?? "User"}
+                    alt={profile.username ?? profile.github_username ?? "User"}
                     width={28}
                     height={28}
                     className="rounded-full"
                   />
                 )}
                 <span className="text-sm text-neutral-600 dark:text-neutral-300">
-                  {profile?.github_username ?? user.email}
+                  {profile?.username ?? profile?.github_username ?? user.email}
                 </span>
               </div>
               <form action="/auth/signout" method="POST">

@@ -37,10 +37,14 @@
 
 create table if not exists public.profiles (
   id              uuid references auth.users(id) on delete cascade primary key,
+  username        text,
   github_username text,
   avatar_url      text,
   created_at      timestamptz default now() not null
 );
+
+alter table public.profiles
+  add column if not exists username text;
 
 alter table public.profiles enable row level security;
 
@@ -75,9 +79,14 @@ end $$;
 create or replace function public.handle_new_user()
 returns trigger set search_path = '' language plpgsql security definer as $$
 begin
-  insert into public.profiles (id, github_username, avatar_url)
+  insert into public.profiles (id, username, github_username, avatar_url)
   values (
     NEW.id,
+    coalesce(
+      nullif(NEW.raw_user_meta_data->>'username', ''),
+      nullif(NEW.raw_user_meta_data->>'user_name', ''),
+      'user-' || substr(replace(NEW.id::text, '-', ''), 1, 6)
+    ),
     NEW.raw_user_meta_data->>'user_name',  -- populated by GitHub OAuth
     NEW.raw_user_meta_data->>'avatar_url'
   )

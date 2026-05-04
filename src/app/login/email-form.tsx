@@ -3,8 +3,13 @@
 import { useState } from "react";
 import { signInWithEmail, signUpWithEmail } from "./actions";
 
+function createDefaultUsername(): string {
+  return `user-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export function EmailForm() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [username, setUsername] = useState(createDefaultUsername);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -42,13 +47,27 @@ export function EmailForm() {
           className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         {mode === "signup" && (
-          <input
-            name="confirm_password"
-            type="password"
-            required
-            placeholder="Confirm password"
-            className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <>
+            <input
+              name="username"
+              type="text"
+              required
+              minLength={3}
+              maxLength={30}
+              pattern="[a-zA-Z0-9_-]+"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              aria-label="Username"
+              className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              name="confirm_password"
+              type="password"
+              required
+              placeholder="Confirm password"
+              className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </>
         )}
 
         {error && <p className="text-sm text-red-500">{error}</p>}
@@ -76,7 +95,12 @@ export function EmailForm() {
           <>
             No account?{" "}
             <button
-              onClick={() => { setError(null); setSuccess(null); setMode("signup"); }}
+              onClick={() => {
+                setError(null);
+                setSuccess(null);
+                setUsername(createDefaultUsername());
+                setMode("signup");
+              }}
               className="text-blue-600 dark:text-blue-400 hover:underline"
             >
               Sign up
@@ -86,7 +110,11 @@ export function EmailForm() {
           <>
             Already have an account?{" "}
             <button
-              onClick={() => { setError(null); setSuccess(null); setMode("signin"); }}
+              onClick={() => {
+                setError(null);
+                setSuccess(null);
+                setMode("signin");
+              }}
               className="text-blue-600 dark:text-blue-400 hover:underline"
             >
               Sign in

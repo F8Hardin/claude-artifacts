@@ -44,6 +44,7 @@ type ArtifactRow = {
 
 type Profile = {
   id: string;
+  username: string | null;
   github_username: string | null;
   avatar_url: string | null;
 };
@@ -54,7 +55,7 @@ async function fetchProfiles(ownerIds: string[]): Promise<Map<string, Profile>> 
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("id, github_username, avatar_url")
+    .select("id, username, github_username, avatar_url")
     .in("id", ownerIds);
   return new Map((data ?? []).map((p: Profile) => [p.id, p]));
 }
@@ -71,7 +72,7 @@ function toArtifact(row: ArtifactRow, profile: Profile | undefined): Artifact {
     is_public: row.is_public,
     author_name_visible: row.author_name_visible ?? true,
     created_at: row.created_at,
-    author_username: profile?.github_username ?? null,
+    author_username: profile?.username ?? profile?.github_username ?? null,
     author_avatar: profile?.avatar_url ?? null,
   };
 }
