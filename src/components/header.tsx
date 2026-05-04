@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
+import { UserMenu } from "@/components/user-menu";
 
 export async function Header() {
   const supabase = await createClient();
@@ -63,6 +64,7 @@ export async function Header() {
                   {profile?.username ?? profile?.github_username ?? user.email}
                 </span>
               </div>
+              <UserMenu />
               <form action="/auth/signout" method="POST">
                 <button
                   type="submit"

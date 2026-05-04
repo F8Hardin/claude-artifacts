@@ -106,6 +106,20 @@ export async function fetchArtifact(slug: string): Promise<Artifact | null> {
   return toArtifact(row, profiles.get(row.owner_id));
 }
 
+export async function fetchArtifactsByOwner(ownerId: string): Promise<Artifact[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("artifacts")
+    .select("*")
+    .eq("owner_id", ownerId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  const rows = data as ArtifactRow[];
+  const profiles = await fetchProfiles([ownerId]);
+  return rows.map((row) => toArtifact(row, profiles.get(row.owner_id)));
+}
+
 export async function searchArtifactRows(query: string): Promise<Artifact[]> {
   const supabase = await createClient();
   const q = query.toLowerCase();
