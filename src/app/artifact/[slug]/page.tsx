@@ -39,7 +39,11 @@ export default async function ArtifactPage({
         previewUrl={`/artifact/${artifact.slug}/preview`}
         title={artifact.title}
       />
-      <ArtifactInfoPanel artifact={artifact} canEdit={canEdit} />
+      <ArtifactInfoPanel
+        artifact={artifact}
+        canEdit={canEdit}
+        currentUserId={user?.id ?? null}
+      />
     </main>
   );
 }

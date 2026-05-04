@@ -167,6 +167,60 @@ do $$ begin
   end if;
 end $$;
 
+-- ─── Comments ────────────────────────────────────────────────────────────────
+
+create table if not exists public.comments (
+  id          uuid default gen_random_uuid() primary key,
+  artifact_id uuid references public.artifacts(id) on delete cascade not null,
+  user_id     uuid references auth.users(id) on delete cascade not null,
+  body        text not null check (char_length(body) <= 1000),
+  created_at  timestamptz default now() not null
+);
+
+alter table public.comments enable row level security;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'comments' and policyname = 'Comments on public artifacts readable by all'
+  ) then
+    create policy "Comments on public artifacts readable by all"
+      on public.comments for select using (
+        exists (
+          select 1 from public.artifacts a
+          where a.id = artifact_id and a.is_public = true
+        )
+      );
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'comments' and policyname = 'Comment owners can read own comments'
+  ) then
+    create policy "Comment owners can read own comments"
+      on public.comments for select using ((select auth.uid()) = user_id);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'comments' and policyname = 'Authenticated users can comment'
+  ) then
+    create policy "Authenticated users can comment"
+      on public.comments for insert to authenticated
+      with check ((select auth.uid()) = user_id);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'comments' and policyname = 'Users can delete own comments'
+  ) then
+    create policy "Users can delete own comments"
+      on public.comments for delete using ((select auth.uid()) = user_id);
+  end if;
+end $$;
+
 -- ─── Storage ─────────────────────────────────────────────────────────────────
 
 insert into storage.buckets (id, name, public)

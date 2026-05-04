@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Artifact } from "@/lib/artifacts";
+import { CommentsSection } from "@/components/comments-section";
 
 function getAuthorLabel(artifact: Artifact): string {
   if (!artifact.author_name_visible) return "anonymous";
@@ -12,11 +13,14 @@ function getAuthorLabel(artifact: Artifact): string {
 export function ArtifactInfoPanel({
   artifact,
   canEdit,
+  currentUserId,
 }: {
   artifact: Artifact;
   canEdit: boolean;
+  currentUserId: string | null;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [showComments, setShowComments] = useState(false);
 
   return (
     <section className="absolute inset-x-0 bottom-0 z-20 border-t border-neutral-200 bg-white/90 shadow-[0_-6px_24px_rgba(0,0,0,0.07)] backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-950/90">
@@ -25,7 +29,7 @@ export function ArtifactInfoPanel({
           <button
             type="button"
             aria-expanded={expanded}
-            onClick={() => setExpanded((value) => !value)}
+            onClick={() => setExpanded((v) => !v)}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-neutral-300 text-base leading-none hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
           >
             {expanded ? "v" : "^"}
@@ -43,7 +47,20 @@ export function ArtifactInfoPanel({
               )}
             </div>
             <p className="truncate text-xs text-neutral-500 dark:text-neutral-400">
-              by {getAuthorLabel(artifact)} &middot;{" "}
+              {artifact.author_name_visible && artifact.author_username ? (
+                <>
+                  by{" "}
+                  <Link
+                    href={`/user/${artifact.author_username}`}
+                    className="hover:underline"
+                  >
+                    {artifact.author_username}
+                  </Link>
+                  {" "}
+                </>
+              ) : (
+                <>by anonymous &middot; </>
+              )}
               {new Date(artifact.created_at).toLocaleDateString()}
             </p>
           </div>
@@ -77,6 +94,21 @@ export function ArtifactInfoPanel({
                   </span>
                 ))}
               </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowComments((v) => !v)}
+              className="mt-4 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+            >
+              {showComments ? "Hide comments" : "View comments"}
+            </button>
+
+            {showComments && (
+              <CommentsSection
+                artifactId={artifact.id}
+                currentUserId={currentUserId}
+              />
             )}
           </div>
         )}

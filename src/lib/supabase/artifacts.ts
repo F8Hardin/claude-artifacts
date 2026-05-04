@@ -127,20 +127,36 @@ export async function searchArtifactRows(query: string): Promise<Artifact[]> {
   const { data, error } = await supabase
     .from("artifacts")
     .select("*")
-    .or(`title.ilike.%${q}%,description.ilike.%${q}%`)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
 
-  const rows = (data as ArtifactRow[]).filter(
+  const all = data as ArtifactRow[];
+  const nameMatches = all.filter(
     (r) =>
       r.title.toLowerCase().includes(q) ||
-      r.description.toLowerCase().includes(q) ||
-      r.tags.some((t) => t.toLowerCase().includes(q))
+      r.description.toLowerCase().includes(q)
+  );
+  const nameMatchIds = new Set(nameMatches.map((r) => r.id));
+  const tagOnlyMatches = all.filter(
+    (r) => !nameMatchIds.has(r.id) && r.tags.some((t) => t.toLowerCase().includes(q))
   );
 
+  const rows = [...nameMatches, ...tagOnlyMatches];
   const profiles = await fetchProfiles([...new Set(rows.map((r) => r.owner_id))]);
   return rows.map((r) => toArtifact(r, profiles.get(r.owner_id)));
+}
+
+export async function fetchProfileByUsername(
+  username: string
+): Promise<{ id: string; username: string | null; github_username: string | null; avatar_url: string | null } | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, username, github_username, avatar_url")
+    .or(`username.eq.${username},github_username.eq.${username}`)
+    .maybeSingle();
+  return data ?? null;
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────

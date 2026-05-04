@@ -41,9 +41,12 @@ export async function uploadArtifact(
   const agreedToTerms = formData.get("agree_terms") === "true";
   const file = formData.get("file") as File | null;
 
+  const allowedExtensions = [".html", ".jsx", ".js"];
+  const fileExt = allowedExtensions.find((ext) => file?.name.endsWith(ext));
+
   if (!title) return { error: "Title is required." };
-  if (!file || file.size === 0) return { error: "HTML file is required." };
-  if (!file.name.endsWith(".html")) return { error: "Only .html files are allowed." };
+  if (!file || file.size === 0) return { error: "Artifact file is required." };
+  if (!fileExt) return { error: "Only .html, .jsx, or .js files are allowed." };
   if (file.size > 5 * 1024 * 1024) return { error: "File must be under 5 MB." };
   if (!agreedToTerms) return { error: "You must confirm you have rights to share this content." };
 
@@ -52,7 +55,7 @@ export async function uploadArtifact(
     : [];
 
   const slug = titleToSlug(title);
-  const storagePath = `${slug}.html`;
+  const storagePath = `${slug}${fileExt}`;
 
   const { error: uploadError } = await uploadArtifactFile(
     storagePath,
