@@ -60,6 +60,7 @@ type ArtifactRow = {
   is_public: boolean;
   author_name_visible: boolean;
   created_at: string;
+  like_count: number;
 };
 
 type Profile = {
@@ -94,10 +95,49 @@ function toArtifact(row: ArtifactRow, profile: Profile | undefined): Artifact {
     created_at: row.created_at,
     author_username: profile?.username ?? profile?.github_username ?? null,
     author_avatar: profile?.avatar_url ?? null,
+    like_count: row.like_count ?? 0,
   };
 }
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
+
+export async function fetchTopRated(limit: number): Promise<Artifact[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("artifacts")
+    .select("*")
+    .order("like_count", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  const rows = data as ArtifactRow[];
+  const profiles = await fetchProfiles([...new Set(rows.map((r) => r.owner_id))]);
+  return rows.map((r) => toArtifact(r, profiles.get(r.owner_id)));
+}
+
+export async function fetchLatest(limit: number): Promise<Artifact[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("artifacts")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  const rows = data as ArtifactRow[];
+  const profiles = await fetchProfiles([...new Set(rows.map((r) => r.owner_id))]);
+  return rows.map((r) => toArtifact(r, profiles.get(r.owner_id)));
+}
+
+export async function hasUserLiked(artifactId: string, userId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("likes")
+    .select("id")
+    .eq("artifact_id", artifactId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return !!data;
+}
 
 export async function fetchAllArtifacts(): Promise<Artifact[]> {
   const supabase = await createClient();

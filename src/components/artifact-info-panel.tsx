@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Artifact } from "@/lib/artifacts";
 import { CommentsSection } from "@/components/comments-section";
+import { LikeButton } from "@/components/like-button";
 
 function getAuthorLabel(artifact: Artifact): string {
   if (!artifact.author_name_visible) return "anonymous";
@@ -14,10 +15,12 @@ export function ArtifactInfoPanel({
   artifact,
   canEdit,
   currentUserId,
+  userHasLiked,
 }: {
   artifact: Artifact;
   canEdit: boolean;
   currentUserId: string | null;
+  userHasLiked: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -64,6 +67,14 @@ export function ArtifactInfoPanel({
               {new Date(artifact.created_at).toLocaleDateString(undefined, { timeZone: "UTC" })}
             </p>
           </div>
+
+          <LikeButton
+            artifactId={artifact.id}
+            artifactSlug={artifact.slug}
+            initialCount={artifact.like_count}
+            initialLiked={userHasLiked}
+            isAuthenticated={!!currentUserId}
+          />
 
           {canEdit && (
             <Link

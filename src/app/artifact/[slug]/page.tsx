@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { fetchArtifact } from "@/lib/supabase/artifacts";
+import { fetchArtifact, hasUserLiked } from "@/lib/supabase/artifacts";
 import { createClient } from "@/lib/supabase/server";
 import { ArtifactInfoPanel } from "@/components/artifact-info-panel";
 import { ArtifactViewer } from "@/components/artifact-viewer";
@@ -32,6 +32,7 @@ export default async function ArtifactPage({
     data: { user },
   } = await supabase.auth.getUser();
   const canEdit = user?.id === artifact.owner_id;
+  const userLiked = user ? await hasUserLiked(artifact.id, user.id) : false;
 
   return (
     <main className="relative h-[calc(100dvh-3.5rem)] min-h-[calc(100dvh-3.5rem)] flex-1 overflow-hidden bg-white dark:bg-black">
@@ -43,6 +44,7 @@ export default async function ArtifactPage({
         artifact={artifact}
         canEdit={canEdit}
         currentUserId={user?.id ?? null}
+        userHasLiked={userLiked}
       />
     </main>
   );

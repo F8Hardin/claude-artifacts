@@ -27,7 +27,15 @@ export function ArtifactCard({ artifact }: { artifact: Artifact }) {
       </p>
       <div className="mt-3 flex items-center justify-between text-xs text-neutral-400">
         <span>{getAuthorLabel(artifact)}</span>
-        <span>{new Date(artifact.created_at).toLocaleDateString(undefined, { timeZone: "UTC" })}</span>
+        <div className="flex items-center gap-2.5">
+          {artifact.like_count > 0 && (
+            <span className="flex items-center gap-1">
+              <span aria-hidden>♥</span>
+              {artifact.like_count}
+            </span>
+          )}
+          <span>{new Date(artifact.created_at).toLocaleDateString(undefined, { timeZone: "UTC" })}</span>
+        </div>
       </div>
       {artifact.tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">

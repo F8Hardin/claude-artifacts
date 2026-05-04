@@ -13,4 +13,5 @@ export interface Artifact {
   created_at: string;
   author_username: string | null;
   author_avatar: string | null;
+  like_count: number;
 }

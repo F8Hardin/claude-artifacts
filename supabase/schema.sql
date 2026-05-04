@@ -221,6 +221,65 @@ do $$ begin
   end if;
 end $$;
 
+-- ─── Likes ───────────────────────────────────────────────────────────────────
+
+alter table public.artifacts
+  add column if not exists like_count int not null default 0;
+
+create table if not exists public.likes (
+  id          uuid default gen_random_uuid() primary key,
+  artifact_id uuid references public.artifacts(id) on delete cascade not null,
+  user_id     uuid references auth.users(id) on delete cascade not null,
+  created_at  timestamptz default now() not null,
+  unique (artifact_id, user_id)
+);
+
+alter table public.likes enable row level security;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'likes' and policyname = 'Likes are publicly readable'
+  ) then
+    create policy "Likes are publicly readable"
+      on public.likes for select using (true);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'likes' and policyname = 'Authenticated users can like'
+  ) then
+    create policy "Authenticated users can like"
+      on public.likes for insert to authenticated
+      with check ((select auth.uid()) = user_id);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'likes' and policyname = 'Users can unlike'
+  ) then
+    create policy "Users can unlike"
+      on public.likes for delete using ((select auth.uid()) = user_id);
+  end if;
+end $$;
+
+create or replace function public.update_artifact_like_count()
+returns trigger set search_path = '' language plpgsql as $$
+begin
+  if TG_OP = 'INSERT' then
+    update public.artifacts set like_count = like_count + 1 where id = NEW.artifact_id;
+  elsif TG_OP = 'DELETE' then
+    update public.artifacts set like_count = greatest(like_count - 1, 0) where id = OLD.artifact_id;
+  end if;
+  return null;
+end;
+$$;
+
+create or replace trigger on_like_change
+  after insert or delete on public.likes
+  for each row execute procedure public.update_artifact_like_count();
+
 -- ─── Storage ─────────────────────────────────────────────────────────────────
 
 insert into storage.buckets (id, name, public)
