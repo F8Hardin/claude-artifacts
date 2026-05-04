@@ -6,7 +6,7 @@ import { ArtifactCard } from "@/components/artifact-card";
 import { fetchTopRated, fetchLatest } from "@/lib/supabase/artifacts";
 
 async function TopRatedSection() {
-  const artifacts = await fetchTopRated(5);
+  const artifacts = await fetchTopRated(6);
   if (artifacts.length === 0) return null;
   return (
     <section className="mb-12">
