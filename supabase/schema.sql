@@ -3,6 +3,35 @@
 -- Run this in Supabase Dashboard → SQL Editor
 -- Safe to re-run: uses IF NOT EXISTS guards throughout
 -- ============================================================
+--
+-- What this creates:
+--
+-- TABLES
+--   public.profiles     — One row per user. Stores their GitHub username and
+--                         avatar URL. Auto-populated on signup via trigger.
+--
+--   public.artifacts    — One row per artifact. Stores title, description,
+--                         tags, visibility (is_public), and a storage_path
+--                         pointing to the HTML file in the storage bucket.
+--                         Linked to the owner via owner_id → auth.users.
+--
+-- FUNCTION + TRIGGER
+--   handle_new_user()   — Runs automatically after every new signup and
+--                         inserts a matching row into public.profiles.
+--
+-- ROW LEVEL SECURITY (RLS)
+--   profiles            — Anyone can read. Only the owner can insert/update.
+--   artifacts           — Public artifacts readable by everyone (including
+--                         unauthenticated users). Private artifacts readable
+--                         only by their owner. Only the owner can insert,
+--                         update, or delete their own artifacts.
+--
+-- STORAGE
+--   artifacts bucket    — Public bucket for storing artifact HTML files.
+--                         Anyone can read. Only authenticated users can
+--                         upload. Only the uploader can delete their files.
+--
+-- ============================================================
 
 -- ─── Profiles ────────────────────────────────────────────────────────────────
 
