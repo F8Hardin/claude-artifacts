@@ -1,11 +1,12 @@
 -- ============================================================
 -- Claude Artifacts — Initial Schema
--- Run this once in Supabase Dashboard → SQL Editor
+-- Run this in Supabase Dashboard → SQL Editor
+-- Safe to re-run: uses IF NOT EXISTS guards throughout
 -- ============================================================
 
 -- ─── Profiles ────────────────────────────────────────────────────────────────
 
-create table public.profiles (
+create table if not exists public.profiles (
   id              uuid references auth.users(id) on delete cascade primary key,
   github_username text,
   avatar_url      text,
@@ -14,17 +15,35 @@ create table public.profiles (
 
 alter table public.profiles enable row level security;
 
-create policy "Profiles are publicly readable"
-  on public.profiles for select using (true);
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'profiles' and policyname = 'Profiles are publicly readable'
+  ) then
+    create policy "Profiles are publicly readable"
+      on public.profiles for select using (true);
+  end if;
+end $$;
 
-create policy "Users can insert own profile"
-  on public.profiles for insert with check ((select auth.uid()) = id);
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'profiles' and policyname = 'Users can insert own profile'
+  ) then
+    create policy "Users can insert own profile"
+      on public.profiles for insert with check ((select auth.uid()) = id);
+  end if;
+end $$;
 
-create policy "Users can update own profile"
-  on public.profiles for update using ((select auth.uid()) = id);
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'profiles' and policyname = 'Users can update own profile'
+  ) then
+    create policy "Users can update own profile"
+      on public.profiles for update using ((select auth.uid()) = id);
+  end if;
+end $$;
 
 -- Auto-create profile row when a new user signs up
-create function public.handle_new_user()
+create or replace function public.handle_new_user()
 returns trigger set search_path = '' language plpgsql security definer as $$
 begin
   insert into public.profiles (id, github_username, avatar_url)
@@ -32,18 +51,20 @@ begin
     new.id,
     new.raw_user_meta_data->>'user_name',  -- populated by GitHub OAuth
     new.raw_user_meta_data->>'avatar_url'
-  );
+  )
+  on conflict (id) do nothing;
   return new;
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
 -- ─── Artifacts ───────────────────────────────────────────────────────────────
 
-create table public.artifacts (
+create table if not exists public.artifacts (
   id           uuid default gen_random_uuid() primary key,
   slug         text unique not null,
   title        text not null,
@@ -58,33 +79,83 @@ create table public.artifacts (
 
 alter table public.artifacts enable row level security;
 
-create policy "Public artifacts readable by all"
-  on public.artifacts for select using (is_public = true);
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'artifacts' and policyname = 'Public artifacts readable by all'
+  ) then
+    create policy "Public artifacts readable by all"
+      on public.artifacts for select using (is_public = true);
+  end if;
+end $$;
 
-create policy "Private artifacts readable by owner"
-  on public.artifacts for select
-  using (is_public = false and (select auth.uid()) = owner_id);
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'artifacts' and policyname = 'Private artifacts readable by owner'
+  ) then
+    create policy "Private artifacts readable by owner"
+      on public.artifacts for select
+      using (is_public = false and (select auth.uid()) = owner_id);
+  end if;
+end $$;
 
-create policy "Owners can insert artifacts"
-  on public.artifacts for insert with check ((select auth.uid()) = owner_id);
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'artifacts' and policyname = 'Owners can insert artifacts'
+  ) then
+    create policy "Owners can insert artifacts"
+      on public.artifacts for insert with check ((select auth.uid()) = owner_id);
+  end if;
+end $$;
 
-create policy "Owners can update artifacts"
-  on public.artifacts for update using ((select auth.uid()) = owner_id);
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'artifacts' and policyname = 'Owners can update artifacts'
+  ) then
+    create policy "Owners can update artifacts"
+      on public.artifacts for update using ((select auth.uid()) = owner_id);
+  end if;
+end $$;
 
-create policy "Owners can delete artifacts"
-  on public.artifacts for delete using ((select auth.uid()) = owner_id);
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'artifacts' and policyname = 'Owners can delete artifacts'
+  ) then
+    create policy "Owners can delete artifacts"
+      on public.artifacts for delete using ((select auth.uid()) = owner_id);
+  end if;
+end $$;
 
 -- ─── Storage ─────────────────────────────────────────────────────────────────
 
-insert into storage.buckets (id, name, public) values ('artifacts', 'artifacts', true);
+insert into storage.buckets (id, name, public)
+  values ('artifacts', 'artifacts', true)
+  on conflict (id) do nothing;
 
-create policy "Artifacts publicly readable"
-  on storage.objects for select using (bucket_id = 'artifacts');
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'objects' and policyname = 'Artifacts publicly readable'
+  ) then
+    create policy "Artifacts publicly readable"
+      on storage.objects for select using (bucket_id = 'artifacts');
+  end if;
+end $$;
 
-create policy "Authenticated users can upload"
-  on storage.objects for insert to authenticated
-  with check (bucket_id = 'artifacts');
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'objects' and policyname = 'Authenticated users can upload'
+  ) then
+    create policy "Authenticated users can upload"
+      on storage.objects for insert to authenticated
+      with check (bucket_id = 'artifacts');
+  end if;
+end $$;
 
-create policy "Owners can delete artifact files"
-  on storage.objects for delete to authenticated
-  using (bucket_id = 'artifacts' and owner_id = (select auth.uid())::text);
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'objects' and policyname = 'Owners can delete artifact files'
+  ) then
+    create policy "Owners can delete artifact files"
+      on storage.objects for delete to authenticated
+      using (bucket_id = 'artifacts' and owner_id = (select auth.uid())::text);
+  end if;
+end $$;
