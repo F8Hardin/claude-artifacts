@@ -102,9 +102,13 @@ create table if not exists public.artifacts (
   storage_path text not null,
   tags         text[] not null default '{}',
   is_public    boolean not null default true,
+  author_name_visible boolean not null default true,
   created_at   timestamptz default now() not null,
   updated_at   timestamptz default now() not null
 );
+
+alter table public.artifacts
+  add column if not exists author_name_visible boolean not null default true;
 
 alter table public.artifacts enable row level security;
 

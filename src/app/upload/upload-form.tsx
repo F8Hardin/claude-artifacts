@@ -100,6 +100,23 @@ export function UploadForm() {
         </span>
       </div>
 
+      <div className="flex items-center gap-3">
+        <input type="hidden" name="author_name_visible" value="false" />
+        <label className="flex items-center gap-2.5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            name="author_name_visible"
+            value="true"
+            defaultChecked
+            className="w-4 h-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span className="text-sm font-medium">Show my name</span>
+        </label>
+        <span className="text-xs text-neutral-400">
+          Hidden names display as anonymous
+        </span>
+      </div>
+
       {/* Copyright disclaimer */}
       <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-4 space-y-2">
         <p className="text-sm font-medium text-amber-800 dark:text-amber-300">

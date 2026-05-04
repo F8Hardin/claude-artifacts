@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { Artifact } from "@/lib/artifacts";
 
+function getAuthorLabel(artifact: Artifact): string {
+  if (!artifact.author_name_visible) return "anonymous";
+  return artifact.author_username ?? "anonymous";
+}
+
 export function ArtifactCard({ artifact }: { artifact: Artifact }) {
   return (
     <Link
@@ -21,7 +26,7 @@ export function ArtifactCard({ artifact }: { artifact: Artifact }) {
         {artifact.description}
       </p>
       <div className="mt-3 flex items-center justify-between text-xs text-neutral-400">
-        <span>{artifact.author_username ?? "Unknown"}</span>
+        <span>{getAuthorLabel(artifact)}</span>
         <span>{new Date(artifact.created_at).toLocaleDateString()}</span>
       </div>
       {artifact.tags.length > 0 && (

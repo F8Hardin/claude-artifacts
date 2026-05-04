@@ -38,6 +38,7 @@ type ArtifactRow = {
   storage_path: string;
   tags: string[];
   is_public: boolean;
+  author_name_visible: boolean;
   created_at: string;
 };
 
@@ -68,6 +69,7 @@ function toArtifact(row: ArtifactRow, profile: Profile | undefined): Artifact {
     storage_path: row.storage_path,
     tags: row.tags,
     is_public: row.is_public,
+    author_name_visible: row.author_name_visible ?? true,
     created_at: row.created_at,
     author_username: profile?.github_username ?? null,
     author_avatar: profile?.avatar_url ?? null,
@@ -136,8 +138,49 @@ export async function insertArtifact(params: {
   storage_path: string;
   tags: string[];
   is_public: boolean;
+  author_name_visible: boolean;
 }): Promise<{ error: string | null }> {
   const supabase = await createClient();
   const { error } = await supabase.from("artifacts").insert(params);
+  return { error: error?.message ?? null };
+}
+
+export async function updateArtifact(params: {
+  slug: string;
+  owner_id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  is_public: boolean;
+  author_name_visible: boolean;
+}): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("artifacts")
+    .update({
+      title: params.title,
+      description: params.description,
+      tags: params.tags,
+      is_public: params.is_public,
+      author_name_visible: params.author_name_visible,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("slug", params.slug)
+    .eq("owner_id", params.owner_id);
+
+  return { error: error?.message ?? null };
+}
+
+export async function deleteArtifact(params: {
+  slug: string;
+  owner_id: string;
+}): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("artifacts")
+    .delete()
+    .eq("slug", params.slug)
+    .eq("owner_id", params.owner_id);
+
   return { error: error?.message ?? null };
 }

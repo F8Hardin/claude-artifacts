@@ -34,7 +34,10 @@ export async function uploadArtifact(
   const title = (formData.get("title") as string)?.trim();
   const description = (formData.get("description") as string)?.trim() ?? "";
   const tagsRaw = (formData.get("tags") as string)?.trim() ?? "";
-  const isPublic = formData.get("is_public") === "true";
+  const isPublic = formData.getAll("is_public").includes("true");
+  const authorNameVisible = formData
+    .getAll("author_name_visible")
+    .includes("true");
   const agreedToTerms = formData.get("agree_terms") === "true";
   const file = formData.get("file") as File | null;
 
@@ -65,6 +68,7 @@ export async function uploadArtifact(
     storage_path: storagePath,
     tags,
     is_public: isPublic,
+    author_name_visible: authorNameVisible,
   });
 
   if (insertError) {

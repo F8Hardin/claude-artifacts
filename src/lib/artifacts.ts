@@ -9,6 +9,7 @@ export interface Artifact {
   storage_path: string;
   tags: string[];
   is_public: boolean;
+  author_name_visible: boolean;
   created_at: string;
   author_username: string | null;
   author_avatar: string | null;
