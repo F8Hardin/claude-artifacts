@@ -7,18 +7,38 @@ export function getStorageUrl(storagePath: string): string {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artifacts/${storagePath}`;
 }
 
+function contentTypeForPath(storagePath: string): string {
+  if (storagePath.endsWith(".jsx") || storagePath.endsWith(".js")) {
+    return "text/plain; charset=utf-8";
+  }
+  return "text/html; charset=utf-8";
+}
+
 export async function uploadArtifactFile(
   storagePath: string,
-  fileBuffer: ArrayBuffer
+  fileBuffer: ArrayBuffer,
+  { upsert = false }: { upsert?: boolean } = {}
 ): Promise<{ error: string | null }> {
   const supabase = await createClient();
-  const blob = new Blob([fileBuffer], { type: "text/html; charset=utf-8" });
+  const contentType = contentTypeForPath(storagePath);
+  const blob = new Blob([fileBuffer], { type: contentType });
   const { error } = await supabase.storage
     .from("artifacts")
-    .upload(storagePath, blob, {
-      contentType: "text/html; charset=utf-8",
-      upsert: false,
-    });
+    .upload(storagePath, blob, { contentType, upsert });
+  return { error: error?.message ?? null };
+}
+
+export async function updateArtifactStoragePath(params: {
+  slug: string;
+  owner_id: string;
+  storage_path: string;
+}): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("artifacts")
+    .update({ storage_path: params.storage_path, updated_at: new Date().toISOString() })
+    .eq("slug", params.slug)
+    .eq("owner_id", params.owner_id);
   return { error: error?.message ?? null };
 }
 

@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { Artifact } from "@/lib/artifacts";
-import { deleteArtifactDetails, updateArtifactDetails } from "../actions";
+import { deleteArtifactDetails, replaceArtifactFile, updateArtifactDetails } from "../actions";
 
 export function EditArtifactForm({ artifact }: { artifact: Artifact }) {
   const [updatePending, setUpdatePending] = useState(false);
+  const [replacePending, setReplacePending] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,6 +18,16 @@ export function EditArtifactForm({ artifact }: { artifact: Artifact }) {
     if (result?.error) {
       setError(result.error);
       setUpdatePending(false);
+    }
+  }
+
+  async function handleReplace(formData: FormData) {
+    setError(null);
+    setReplacePending(true);
+    const result = await replaceArtifactFile(artifact.slug, formData);
+    if (result?.error) {
+      setError(result.error);
+      setReplacePending(false);
     }
   }
 
@@ -132,10 +143,34 @@ export function EditArtifactForm({ artifact }: { artifact: Artifact }) {
       </form>
 
       <div className="border-t border-neutral-200 dark:border-neutral-800 pt-6">
+        <h2 className="text-sm font-semibold mb-1">Replace File</h2>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+          Upload a new file to replace the current artifact content. The URL and
+          comments are preserved.
+        </p>
+        <form action={handleReplace} className="flex gap-2 items-start">
+          <input
+            name="file"
+            type="file"
+            accept=".html,.jsx,.js,text/html,application/javascript"
+            required
+            className="flex-1 text-sm text-neutral-600 dark:text-neutral-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-neutral-100 dark:file:bg-neutral-800 file:text-sm file:font-medium cursor-pointer"
+          />
+          <button
+            type="submit"
+            disabled={updatePending || replacePending || deletePending}
+            className="shrink-0 py-2 px-4 rounded-lg bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900 text-sm font-medium hover:bg-neutral-700 dark:hover:bg-neutral-300 disabled:opacity-50 transition-colors"
+          >
+            {replacePending ? "Uploading…" : "Replace"}
+          </button>
+        </form>
+      </div>
+
+      <div className="border-t border-neutral-200 dark:border-neutral-800 pt-6">
         <button
           type="button"
           onClick={handleDelete}
-          disabled={updatePending || deletePending}
+          disabled={updatePending || replacePending || deletePending}
           className="w-full py-2.5 rounded-lg border border-red-300 dark:border-red-900 text-red-600 dark:text-red-400 font-medium hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50 transition-colors"
         >
           {deletePending ? "Deleting..." : "Delete Artifact"}

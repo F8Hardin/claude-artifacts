@@ -9,6 +9,8 @@ import {
   deleteArtifactFile,
   fetchArtifact,
   updateArtifact,
+  uploadArtifactFile,
+  updateArtifactStoragePath,
 } from "@/lib/supabase/artifacts";
 
 function parseTags(tagsRaw: string): string[] {
@@ -73,6 +75,48 @@ export async function updateArtifactDetails(
   revalidatePath("/");
   revalidatePath(`/artifact/${slug}`);
   revalidatePath(`/artifact/${slug}/edit`);
+  redirect(`/artifact/${slug}`);
+}
+
+export async function replaceArtifactFile(
+  slug: string,
+  formData: FormData
+): Promise<{ error: string } | void> {
+  const ownership = await requireArtifactOwner(slug);
+  if ("error" in ownership) return { error: ownership.error };
+
+  const { artifact, user } = ownership;
+  const file = formData.get("file") as File | null;
+
+  const allowedExtensions = [".html", ".jsx", ".js"];
+  const fileExt = allowedExtensions.find((ext) => file?.name.endsWith(ext));
+
+  if (!file || file.size === 0) return { error: "File is required." };
+  if (!fileExt) return { error: "Only .html, .jsx, or .js files are allowed." };
+  if (file.size > 5 * 1024 * 1024) return { error: "File must be under 5 MB." };
+
+  const newStoragePath = `${slug}${fileExt}`;
+  const pathChanged = artifact.storage_path !== newStoragePath;
+
+  // Upload with upsert if same path, normal upload if new path
+  const { error: uploadError } = await uploadArtifactFile(
+    newStoragePath,
+    await file.arrayBuffer(),
+    { upsert: !pathChanged }
+  );
+  if (uploadError) return { error: `Upload failed: ${uploadError}` };
+
+  if (pathChanged) {
+    await deleteArtifactFile(artifact.storage_path);
+    const { error: dbError } = await updateArtifactStoragePath({
+      slug,
+      owner_id: user.id,
+      storage_path: newStoragePath,
+    });
+    if (dbError) return { error: `Database update failed: ${dbError}` };
+  }
+
+  revalidatePath(`/artifact/${slug}`);
   redirect(`/artifact/${slug}`);
 }
 
