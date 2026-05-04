@@ -12,10 +12,11 @@ export async function uploadArtifactFile(
   fileBuffer: ArrayBuffer
 ): Promise<{ error: string | null }> {
   const supabase = await createClient();
+  const blob = new Blob([fileBuffer], { type: "text/html; charset=utf-8" });
   const { error } = await supabase.storage
     .from("artifacts")
-    .upload(storagePath, fileBuffer, {
-      contentType: "text/html",
+    .upload(storagePath, blob, {
+      contentType: "text/html; charset=utf-8",
       upsert: false,
     });
   return { error: error?.message ?? null };
