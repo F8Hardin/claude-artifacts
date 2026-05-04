@@ -77,12 +77,12 @@ returns trigger set search_path = '' language plpgsql security definer as $$
 begin
   insert into public.profiles (id, github_username, avatar_url)
   values (
-    new.id,
-    new.raw_user_meta_data->>'user_name',  -- populated by GitHub OAuth
-    new.raw_user_meta_data->>'avatar_url'
+    NEW.id,
+    NEW.raw_user_meta_data->>'user_name',  -- populated by GitHub OAuth
+    NEW.raw_user_meta_data->>'avatar_url'
   )
   on conflict (id) do nothing;
-  return new;
+  return NEW;
 end;
 $$;
 
