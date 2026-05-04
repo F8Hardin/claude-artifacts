@@ -21,14 +21,12 @@ export async function uploadArtifactFile(
   return { error: error?.message ?? null };
 }
 
-export async function deleteArtifactFile(
-  storagePath: string
-): Promise<void> {
+export async function deleteArtifactFile(storagePath: string): Promise<void> {
   const supabase = await createClient();
   await supabase.storage.from("artifacts").remove([storagePath]);
 }
 
-// ─── Queries ──────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 type ArtifactRow = {
   id: string;
@@ -40,10 +38,26 @@ type ArtifactRow = {
   tags: string[];
   is_public: boolean;
   created_at: string;
-  profiles: { github_username: string | null; avatar_url: string | null } | null;
 };
 
-function toArtifact(row: ArtifactRow): Artifact {
+type Profile = {
+  id: string;
+  github_username: string | null;
+  avatar_url: string | null;
+};
+
+// Fetch profiles for a list of owner IDs and return a lookup map
+async function fetchProfiles(ownerIds: string[]): Promise<Map<string, Profile>> {
+  if (ownerIds.length === 0) return new Map();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, github_username, avatar_url")
+    .in("id", ownerIds);
+  return new Map((data ?? []).map((p: Profile) => [p.id, p]));
+}
+
+function toArtifact(row: ArtifactRow, profile: Profile | undefined): Artifact {
   return {
     id: row.id,
     slug: row.slug,
@@ -54,32 +68,38 @@ function toArtifact(row: ArtifactRow): Artifact {
     tags: row.tags,
     is_public: row.is_public,
     created_at: row.created_at,
-    author_username: row.profiles?.github_username ?? null,
-    author_avatar: row.profiles?.avatar_url ?? null,
+    author_username: profile?.github_username ?? null,
+    author_avatar: profile?.avatar_url ?? null,
   };
 }
+
+// ─── Queries ──────────────────────────────────────────────────────────────────
 
 export async function fetchAllArtifacts(): Promise<Artifact[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("artifacts")
-    .select("*, profiles(github_username, avatar_url)")
+    .select("*")
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return (data as ArtifactRow[]).map(toArtifact);
+  const rows = data as ArtifactRow[];
+  const profiles = await fetchProfiles([...new Set(rows.map((r) => r.owner_id))]);
+  return rows.map((r) => toArtifact(r, profiles.get(r.owner_id)));
 }
 
 export async function fetchArtifact(slug: string): Promise<Artifact | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("artifacts")
-    .select("*, profiles(github_username, avatar_url)")
+    .select("*")
     .eq("slug", slug)
     .single();
 
   if (error) return null;
-  return toArtifact(data as ArtifactRow);
+  const row = data as ArtifactRow;
+  const profiles = await fetchProfiles([row.owner_id]);
+  return toArtifact(row, profiles.get(row.owner_id));
 }
 
 export async function searchArtifactRows(query: string): Promise<Artifact[]> {
@@ -88,22 +108,21 @@ export async function searchArtifactRows(query: string): Promise<Artifact[]> {
 
   const { data, error } = await supabase
     .from("artifacts")
-    .select("*, profiles(github_username, avatar_url)")
+    .select("*")
     .or(`title.ilike.%${q}%,description.ilike.%${q}%`)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
 
-  const rows = data as ArtifactRow[];
-  return rows
-    .filter(
-      (r) =>
-        r.title.toLowerCase().includes(q) ||
-        r.description.toLowerCase().includes(q) ||
-        r.tags.some((t) => t.toLowerCase().includes(q)) ||
-        (r.profiles?.github_username?.toLowerCase().includes(q) ?? false)
-    )
-    .map(toArtifact);
+  const rows = (data as ArtifactRow[]).filter(
+    (r) =>
+      r.title.toLowerCase().includes(q) ||
+      r.description.toLowerCase().includes(q) ||
+      r.tags.some((t) => t.toLowerCase().includes(q))
+  );
+
+  const profiles = await fetchProfiles([...new Set(rows.map((r) => r.owner_id))]);
+  return rows.map((r) => toArtifact(r, profiles.get(r.owner_id)));
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
