@@ -98,16 +98,16 @@ export async function replaceArtifactFile(
   const newStoragePath = `${slug}${fileExt}`;
   const pathChanged = artifact.storage_path !== newStoragePath;
 
-  // Upload with upsert if same path, normal upload if new path
+  // Delete old file first, then upload new (avoids needing storage UPDATE policy)
+  await deleteArtifactFile(artifact.storage_path);
+
   const { error: uploadError } = await uploadArtifactFile(
     newStoragePath,
-    await file.arrayBuffer(),
-    { upsert: !pathChanged }
+    await file.arrayBuffer()
   );
   if (uploadError) return { error: `Upload failed: ${uploadError}` };
 
   if (pathChanged) {
-    await deleteArtifactFile(artifact.storage_path);
     const { error: dbError } = await updateArtifactStoragePath({
       slug,
       owner_id: user.id,
