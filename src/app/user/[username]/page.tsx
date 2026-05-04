@@ -27,7 +27,7 @@ export default async function UserProfilePage({
   return (
     <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight mb-1">{displayName}</h1>
+        <h1 className="font-display text-5xl tracking-wider mb-1">{displayName}</h1>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
           {artifacts.length} public artifact{artifacts.length !== 1 ? "s" : ""}
         </p>

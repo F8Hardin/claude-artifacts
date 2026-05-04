@@ -5,18 +5,23 @@ import { ArtifactList } from "@/components/artifact-list";
 import { ArtifactCard } from "@/components/artifact-card";
 import { fetchTopRated, fetchLatest } from "@/lib/supabase/artifacts";
 
+const sectionCard =
+  "rounded-2xl border border-neutral-400 dark:border-neutral-700 " +
+  "bg-neutral-100 dark:bg-[#0d0d0d] p-6 " +
+  "shadow-[4px_4px_24px_rgba(0,0,0,0.10)] dark:shadow-[4px_4px_24px_rgba(0,0,0,0.8)]";
+
 async function TopRatedSection() {
   const artifacts = await fetchTopRated(6);
   if (artifacts.length === 0) return null;
   return (
-    <section className="mb-12">
-      <div className="flex items-baseline justify-between mb-4">
-        <h2 className="text-xl font-bold tracking-tight">Top Rated</h2>
+    <section className={`mb-8 ${sectionCard}`}>
+      <div className="flex items-baseline justify-between mb-5">
+        <h2 className="font-display text-4xl tracking-wider">Top Rated</h2>
         <Link
           href="/top-rated"
-          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          className="font-display text-2xl tracking-wider text-neutral-400 dark:text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
         >
-          View top 100 →
+          View Top 100 →
         </Link>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -32,8 +37,8 @@ async function LatestSection() {
   const artifacts = await fetchLatest(10);
   if (artifacts.length === 0) return null;
   return (
-    <section>
-      <h2 className="text-xl font-bold tracking-tight mb-4">Latest</h2>
+    <section className={sectionCard}>
+      <h2 className="font-display text-4xl tracking-wider mb-5">Latest</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {artifacts.map((artifact) => (
           <ArtifactCard key={artifact.slug} artifact={artifact} />
@@ -53,7 +58,7 @@ export default async function Home({
   return (
     <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight mb-2">
+        <h1 className="font-display text-6xl tracking-widest mb-2">
           Claude Artifacts
         </h1>
         <p className="text-neutral-500 dark:text-neutral-400">

@@ -16,7 +16,7 @@ export default async function MyArtifactsPage() {
   return (
     <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight mb-2">
+        <h1 className="font-display text-5xl tracking-wider mb-2">
           My Artifacts
         </h1>
         <p className="text-neutral-500 dark:text-neutral-400">

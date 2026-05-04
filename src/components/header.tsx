@@ -37,7 +37,7 @@ export async function Header() {
           </svg>
         </Link>
 
-        <span className="text-lg font-semibold tracking-tight flex-1">
+        <span className="font-display text-2xl tracking-wider flex-1">
           Claude Artifacts
         </span>
 
