@@ -6,41 +6,64 @@
 // global = window global the UMD build exposes
 const CDN_LIBRARIES: { pkg: string; cdn: string; global: string }[] = [
   {
-    pkg: "lucide-react",
-    cdn: "https://unpkg.com/lucide-react/dist/umd/lucide-react.min.js",
-    global: "LucideReact",
+    pkg: "recharts",
+    cdn: "https://unpkg.com/react-is@18/umd/react-is.production.min.js",
+    global: "__react_is_preload__",
   },
   {
     pkg: "recharts",
-    cdn: "https://unpkg.com/recharts/umd/Recharts.js",
+    cdn: "https://unpkg.com/recharts@2.5.0/umd/Recharts.js",
     global: "Recharts",
   },
+];
+
+// Libraries that don't have a UMD build — we generate inline shims instead.
+const SHIMMED_LIBRARIES: { pkg: string; global: string }[] = [
+  { pkg: "lucide-react", global: "LucideReact" },
 ];
 
 export function processJSX(source: string): { code: string; componentName: string } {
   let code = source;
 
-  // Replace React named imports with destructuring from the global React object
+  // Handle: import React, { useState, ... } from 'react'
+  code = code.replace(
+    /import\s+React\s*,\s*\{([^}]+)\}\s*from\s*['"]react['"]\s*;?/g,
+    (_, imports) => `const { ${imports.trim()} } = React;`
+  );
+
+  // Handle: import * as React from 'react'
+  code = code.replace(
+    /import\s+\*\s+as\s+React\s+from\s*['"]react['"]\s*;?/g,
+    ""
+  );
+
+  // Handle: import React from 'react'
+  code = code.replace(
+    /import\s+React\s+from\s*['"]react['"]\s*;?/g,
+    ""
+  );
+
+  // Handle: import { useState, ... } from 'react'
   code = code.replace(
     /import\s*\{([^}]+)\}\s*from\s*['"]react['"]\s*;?/g,
     (_, imports) => `const { ${imports.trim()} } = React;`
   );
 
-  // Replace known library imports with destructuring from their CDN globals
-  for (const { pkg, global } of CDN_LIBRARIES) {
+  // Replace known CDN library imports with destructuring from their globals
+  const importableLibs = CDN_LIBRARIES.filter((lib) => !lib.global.startsWith("__"));
+  for (const { pkg, global: globalName } of [...importableLibs, ...SHIMMED_LIBRARIES]) {
     const escaped = pkg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const re = new RegExp(
       `import\\s*\\{([^}]+)\\}\\s*from\\s*['"]${escaped}['"]\\s*;?`,
       "g"
     );
-    code = code.replace(re, (_, imports) => `const { ${imports.trim()} } = ${global};`);
+    code = code.replace(re, (_, imports) => `const { ${imports.trim()} } = ${globalName};`);
 
-    // Also handle default imports: import Foo from 'lucide-react'
     const reDefault = new RegExp(
       `import\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+from\\s*['"]${escaped}['"]\\s*;?`,
       "g"
     );
-    code = code.replace(reDefault, (_, name) => `const ${name} = ${global};`);
+    code = code.replace(reDefault, (_, name) => `const ${name} = ${globalName};`);
   }
 
   // Capture and strip "export default function Name" → "function Name"
@@ -73,6 +96,30 @@ export function buildHTML(title: string, jsxCode: string, componentName: string)
     ({ cdn }) => `  <script src="${cdn}"></script>`
   ).join("\n");
 
+  const shimScripts = SHIMMED_LIBRARIES.map(({ global: globalName }) => {
+    if (globalName === "LucideReact") {
+      return `  <script>
+    window.LucideReact = new Proxy({}, {
+      get: function(_, name) {
+        if (typeof name !== 'string') return undefined;
+        return function LucideIcon(props) {
+          var size = props && props.size || 24;
+          var color = props && props.color || 'currentColor';
+          var sw = props && props.strokeWidth || 2;
+          return React.createElement('svg', {
+            width: size, height: size, viewBox: '0 0 24 24',
+            fill: 'none', stroke: color, strokeWidth: sw,
+            strokeLinecap: 'round', strokeLinejoin: 'round',
+            className: props && props.className || ''
+          }, React.createElement('circle', { cx: 12, cy: 12, r: 10 }));
+        };
+      }
+    });
+  </script>`;
+    }
+    return "";
+  }).filter(Boolean).join("\n");
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -83,6 +130,7 @@ export function buildHTML(title: string, jsxCode: string, componentName: string)
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 ${cdnScripts}
+${shimScripts}
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
