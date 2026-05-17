@@ -207,6 +207,35 @@ export async function searchArtifactRows(query: string): Promise<Artifact[]> {
   return rows.map((r) => toArtifact(r, profiles.get(r.owner_id)));
 }
 
+export async function fetchLikedArtifacts(userId: string): Promise<Artifact[]> {
+  const supabase = await createClient();
+
+  const { data: likes } = await supabase
+    .from("likes")
+    .select("artifact_id")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (!likes || likes.length === 0) return [];
+
+  const artifactIds = likes.map((l: { artifact_id: string }) => l.artifact_id);
+
+  const { data, error } = await supabase
+    .from("artifacts")
+    .select("*")
+    .in("id", artifactIds);
+
+  if (error) throw error;
+  const rows = data as ArtifactRow[];
+
+  // Preserve liked-most-recently-first order
+  const idOrder = new Map(artifactIds.map((id: string, i: number) => [id, i]));
+  rows.sort((a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0));
+
+  const profiles = await fetchProfiles([...new Set(rows.map((r) => r.owner_id))]);
+  return rows.map((r) => toArtifact(r, profiles.get(r.owner_id)));
+}
+
 export async function fetchProfileByUsername(
   username: string
 ): Promise<{ id: string; username: string | null; github_username: string | null; avatar_url: string | null } | null> {
