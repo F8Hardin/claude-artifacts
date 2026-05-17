@@ -3,6 +3,97 @@
 import { useState } from "react";
 import { uploadArtifact } from "./actions";
 
+function CompatibilityGuide() {
+  const [open, setOpen] = useState(false);
+
+  const promptText = `Make this artifact compatible with a browser-based JSX preview that has:
+- React 18 (loaded as UMD global — do NOT import React, just use hooks directly)
+- Tailwind CSS (via CDN — all utility classes available)
+- Recharts 2.5 (loaded as UMD global)
+- No other npm packages available (no axios, no framer-motion, no date-fns, etc.)
+- lucide-react icons render as generic placeholders — replace with inline SVGs or emoji
+- No Node.js APIs (no fs, no process, no fetch to relative paths)
+- No Next.js features (no next/link, no next/router, no server components)
+- Must export default a single function component
+- All state, logic, and UI must be in one file
+- Use standard browser APIs (fetch to absolute URLs is fine)
+
+Please rewrite the artifact to follow these constraints. Replace any unavailable libraries with inline implementations or remove them.`;
+
+  return (
+    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/50">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800/50 rounded-lg transition-colors"
+      >
+        <span>Compatibility Guide for JSX/JS Artifacts</span>
+        <span className="text-neutral-400">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 space-y-4 text-sm text-neutral-600 dark:text-neutral-300">
+          <div>
+            <h4 className="font-medium text-neutral-800 dark:text-neutral-100 mb-2">
+              Available in the preview environment:
+            </h4>
+            <ul className="list-disc list-inside space-y-1 text-xs">
+              <li><strong>React 18</strong> — hooks, JSX, all standard APIs</li>
+              <li><strong>Tailwind CSS</strong> — all utility classes</li>
+              <li><strong>Recharts 2.5</strong> — charts and data visualization</li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-medium text-neutral-800 dark:text-neutral-100 mb-2">
+              Not available:
+            </h4>
+            <ul className="list-disc list-inside space-y-1 text-xs">
+              <li>Other npm packages (axios, framer-motion, date-fns, etc.)</li>
+              <li>lucide-react icons (imports won&apos;t error but render as generic circles)</li>
+              <li>Node.js / Next.js APIs</li>
+              <li>Relative fetch paths or server-side logic</li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-medium text-neutral-800 dark:text-neutral-100 mb-2">
+              Rules:
+            </h4>
+            <ul className="list-disc list-inside space-y-1 text-xs">
+              <li>Must <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">export default</code> a single function component</li>
+              <li>Everything in one file — no multi-file imports</li>
+              <li>Use inline SVGs or emoji instead of icon libraries</li>
+              <li>Use browser <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">fetch()</code> with absolute URLs if needed</li>
+            </ul>
+          </div>
+
+          <div className="border-t border-neutral-200 dark:border-neutral-700 pt-3">
+            <h4 className="font-medium text-neutral-800 dark:text-neutral-100 mb-2">
+              Paste this prompt to Claude to fix your artifact:
+            </h4>
+            <div className="relative">
+              <pre className="text-xs bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md p-3 whitespace-pre-wrap overflow-x-auto max-h-48 overflow-y-auto">
+                {promptText}
+              </pre>
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(promptText)}
+                className="absolute top-2 right-2 px-2 py-1 text-xs bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 rounded transition-colors"
+              >
+                Copy
+              </button>
+            </div>
+            <p className="text-xs text-neutral-400 mt-2">
+              Copy this prompt, paste it into Claude along with your artifact code, and it will rewrite it to be compatible.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function UploadForm() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +152,9 @@ export function UploadForm() {
           className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
+
+      {/* Compatibility Guide */}
+      <CompatibilityGuide />
 
       {/* File */}
       <div>
