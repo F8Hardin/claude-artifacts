@@ -341,7 +341,10 @@ do $$ begin
   ) then
     create policy "Authenticated users can upload"
       on storage.objects for insert to authenticated
-      with check (bucket_id = 'artifacts');
+      with check (
+        bucket_id = 'artifacts' and
+        name like ((select auth.uid())::text || '/%')
+      );
   end if;
 end $$;
 

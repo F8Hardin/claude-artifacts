@@ -79,7 +79,7 @@ export async function uploadArtifact(
     : [];
 
   const slug = titleToSlug(title);
-  const storagePath = `${slug}${fileExt}`;
+  const storagePath = `${user.id}/${slug}${fileExt}`;
 
   const { error: uploadError } = await uploadArtifactFile(
     storagePath,

@@ -95,7 +95,7 @@ export async function replaceArtifactFile(
   if (!fileExt) return { error: "Only .html, .jsx, or .js files are allowed." };
   if (file.size > 5 * 1024 * 1024) return { error: "File must be under 5 MB." };
 
-  const newStoragePath = `${slug}${fileExt}`;
+  const newStoragePath = `${user.id}/${slug}${fileExt}`;
   const pathChanged = artifact.storage_path !== newStoragePath;
 
   // Delete old file first, then upload new (avoids needing storage UPDATE policy)
