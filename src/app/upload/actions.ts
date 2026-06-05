@@ -45,6 +45,15 @@ export async function uploadArtifact(
   const allowedExtensions = [".html", ".jsx", ".js"];
   const fileExt = allowedExtensions.find((ext) => file?.name.endsWith(ext));
 
+  const allowedMimes = [
+    "text/html",
+    "text/javascript",
+    "application/javascript",
+    "text/plain",
+    "text/jsx",
+    "",  // some browsers omit MIME for unknown types
+  ];
+
   if (!title) return { error: "Title is required." };
   if (title.length > 100) return { error: "Title must be 100 characters or fewer." };
   if (!file || file.size === 0) return { error: "Artifact file is required." };
@@ -52,6 +61,9 @@ export async function uploadArtifact(
   // (iOS assigns .jsx files application/octet-stream), so MIME checks cause
   // false rejections without adding real security.
   if (!fileExt) return { error: "Only .html, .jsx, or .js files are allowed." };
+  if (file.type && !allowedMimes.includes(file.type.split(";")[0].trim())) {
+    return { error: "Invalid file type." };
+  }
   if (file.size > 5 * 1024 * 1024) return { error: "File must be under 5 MB." };
   if (!agreedToTerms) return { error: "You must confirm you have rights to share this content." };
 
