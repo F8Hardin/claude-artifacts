@@ -1,4 +1,4 @@
-import { createClient, createAdminClient } from "./server";
+import { createClient } from "./server";
 import { Artifact } from "@/lib/artifacts";
 
 // ─── Storage ─────────────────────────────────────────────────────────────────
@@ -6,7 +6,7 @@ import { Artifact } from "@/lib/artifacts";
 export async function downloadArtifactFile(
   storagePath: string
 ): Promise<{ data: Blob | null; error: string | null }> {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.storage.from("artifacts").download(storagePath);
   return { data, error: error?.message ?? null };
 }

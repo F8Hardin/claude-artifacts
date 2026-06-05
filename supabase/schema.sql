@@ -301,6 +301,40 @@ insert into storage.buckets (id, name, public)
   values ('artifacts', 'artifacts', false)
   on conflict (id) do update set public = false;
 
+-- Public artifact files are readable by anyone (joins to artifacts table)
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'objects' and policyname = 'Public artifact files are readable'
+  ) then
+    create policy "Public artifact files are readable"
+      on storage.objects for select
+      using (
+        bucket_id = 'artifacts' and
+        exists (
+          select 1 from public.artifacts a
+          where a.storage_path = name and a.is_public = true
+        )
+      );
+  end if;
+end $$;
+
+-- Private artifact files are readable only by their owner
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'objects' and policyname = 'Owners can read their artifact files'
+  ) then
+    create policy "Owners can read their artifact files"
+      on storage.objects for select to authenticated
+      using (
+        bucket_id = 'artifacts' and
+        exists (
+          select 1 from public.artifacts a
+          where a.storage_path = name and a.owner_id = (select auth.uid())
+        )
+      );
+  end if;
+end $$;
+
 do $$ begin
   if not exists (
     select 1 from pg_policies where tablename = 'objects' and policyname = 'Authenticated users can upload'
