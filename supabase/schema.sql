@@ -280,6 +280,21 @@ create or replace trigger on_like_change
   after insert or delete on public.likes
   for each row execute procedure public.update_artifact_like_count();
 
+-- ─── Indexes ─────────────────────────────────────────────────────────────────
+
+create index if not exists artifacts_owner_created
+  on public.artifacts (owner_id, created_at desc);
+
+create index if not exists artifacts_like_count
+  on public.artifacts (like_count desc, created_at desc);
+
+create index if not exists artifacts_public_created
+  on public.artifacts (created_at desc)
+  where is_public = true;
+
+create index if not exists comments_artifact_id
+  on public.comments (artifact_id);
+
 -- ─── Storage ─────────────────────────────────────────────────────────────────
 
 insert into storage.buckets (id, name, public)

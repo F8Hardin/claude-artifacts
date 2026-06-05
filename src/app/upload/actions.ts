@@ -6,6 +6,7 @@ import {
   uploadArtifactFile,
   deleteArtifactFile,
   insertArtifact,
+  fetchArtifactsByOwner,
 } from "@/lib/supabase/artifacts";
 
 function titleToSlug(title: string): string {
@@ -44,14 +45,37 @@ export async function uploadArtifact(
   const allowedExtensions = [".html", ".jsx", ".js"];
   const fileExt = allowedExtensions.find((ext) => file?.name.endsWith(ext));
 
+  const allowedMimes = [
+    "text/html",
+    "text/javascript",
+    "application/javascript",
+    "text/plain",
+    "text/jsx",
+    "",  // some browsers omit MIME for unknown types
+  ];
+
   if (!title) return { error: "Title is required." };
+  if (title.length > 100) return { error: "Title must be 100 characters or fewer." };
   if (!file || file.size === 0) return { error: "Artifact file is required." };
   if (!fileExt) return { error: "Only .html, .jsx, or .js files are allowed." };
+  if (file.type && !allowedMimes.includes(file.type.split(";")[0].trim())) {
+    return { error: "Invalid file type." };
+  }
   if (file.size > 5 * 1024 * 1024) return { error: "File must be under 5 MB." };
   if (!agreedToTerms) return { error: "You must confirm you have rights to share this content." };
 
+  const existingArtifacts = await fetchArtifactsByOwner(user.id);
+  if (existingArtifacts.length >= 100) {
+    return { error: "Upload limit reached (100 artifacts maximum). Delete some artifacts to upload more." };
+  }
+
   const tags = tagsRaw
-    ? tagsRaw.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean)
+    ? tagsRaw
+        .split(",")
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean)
+        .slice(0, 10)
+        .map((t) => t.slice(0, 30))
     : [];
 
   const slug = titleToSlug(title);

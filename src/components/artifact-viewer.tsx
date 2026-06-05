@@ -13,7 +13,7 @@ export function ArtifactViewer({
         src={previewUrl}
         title={title}
         className="block h-full w-full border-0"
-        sandbox="allow-scripts allow-forms allow-modals allow-popups"
+        sandbox="allow-scripts allow-modals"
       />
     </div>
   );

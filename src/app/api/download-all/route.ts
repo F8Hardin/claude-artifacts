@@ -19,6 +19,10 @@ export async function GET() {
     return new NextResponse("No artifacts to download", { status: 404 });
   }
 
+  if (artifacts.length > 200) {
+    return new NextResponse("Too many artifacts to download at once", { status: 413 });
+  }
+
   const fileEntries = await Promise.all(
     artifacts.map(async (artifact) => {
       const url = getStorageUrl(artifact.storage_path);

@@ -23,24 +23,20 @@ export async function GET(
     artifact.storage_path.endsWith(".jsx") ||
     artifact.storage_path.endsWith(".js");
 
+  const baseHeaders = {
+    "Cache-Control": "private, no-store",
+    "Content-Type": "text/html; charset=utf-8",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy":
+      "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.tailwindcss.com; frame-ancestors 'self'",
+  };
+
   if (!isJSX) {
-    return new Response(source, {
-      headers: {
-        "Cache-Control": "private, no-store",
-        "Content-Type": "text/html; charset=utf-8",
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
+    return new Response(source, { headers: baseHeaders });
   }
 
   const { code, componentName } = processJSX(source);
   const html = buildHTML(artifact.title, code, componentName);
 
-  return new Response(html, {
-    headers: {
-      "Cache-Control": "private, no-store",
-      "Content-Type": "text/html; charset=utf-8",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
+  return new Response(html, { headers: baseHeaders });
 }

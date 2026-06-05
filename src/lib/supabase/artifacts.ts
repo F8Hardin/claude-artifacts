@@ -182,27 +182,36 @@ export async function fetchArtifactsByOwner(ownerId: string): Promise<Artifact[]
 
 export async function searchArtifactRows(query: string): Promise<Artifact[]> {
   const supabase = await createClient();
-  const q = query.toLowerCase();
+  const q = `%${query}%`;
 
-  const { data, error } = await supabase
-    .from("artifacts")
-    .select("*")
-    .order("created_at", { ascending: false });
+  // Fetch title/description matches and tag matches separately, both server-side
+  const [titleRes, tagRes] = await Promise.all([
+    supabase
+      .from("artifacts")
+      .select("*")
+      .or(`title.ilike.${q},description.ilike.${q}`)
+      .eq("is_public", true)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("artifacts")
+      .select("*")
+      .contains("tags", [query.toLowerCase()])
+      .eq("is_public", true)
+      .order("created_at", { ascending: false })
+      .limit(50),
+  ]);
 
-  if (error) throw error;
+  if (titleRes.error) throw titleRes.error;
 
-  const all = data as ArtifactRow[];
-  const nameMatches = all.filter(
-    (r) =>
-      r.title.toLowerCase().includes(q) ||
-      r.description.toLowerCase().includes(q)
+  const titleRows = titleRes.data as ArtifactRow[];
+  const titleIds = new Set(titleRows.map((r) => r.id));
+
+  const tagRows = (tagRes.data as ArtifactRow[] ?? []).filter(
+    (r) => !titleIds.has(r.id)
   );
-  const nameMatchIds = new Set(nameMatches.map((r) => r.id));
-  const tagOnlyMatches = all.filter(
-    (r) => !nameMatchIds.has(r.id) && r.tags.some((t) => t.toLowerCase().includes(q))
-  );
 
-  const rows = [...nameMatches, ...tagOnlyMatches];
+  const rows = [...titleRows, ...tagRows];
   const profiles = await fetchProfiles([...new Set(rows.map((r) => r.owner_id))]);
   return rows.map((r) => toArtifact(r, profiles.get(r.owner_id)));
 }
