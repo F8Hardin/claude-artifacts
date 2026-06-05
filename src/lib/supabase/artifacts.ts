@@ -1,10 +1,14 @@
-import { createClient } from "./server";
+import { createClient, createAdminClient } from "./server";
 import { Artifact } from "@/lib/artifacts";
 
 // ─── Storage ─────────────────────────────────────────────────────────────────
 
-export function getStorageUrl(storagePath: string): string {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artifacts/${storagePath}`;
+export async function downloadArtifactFile(
+  storagePath: string
+): Promise<{ data: Blob | null; error: string | null }> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.storage.from("artifacts").download(storagePath);
+  return { data, error: error?.message ?? null };
 }
 
 function contentTypeForPath(storagePath: string): string {

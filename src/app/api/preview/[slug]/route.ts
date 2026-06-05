@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchArtifact, getStorageUrl } from "@/lib/supabase/artifacts";
+import { fetchArtifact, downloadArtifactFile } from "@/lib/supabase/artifacts";
 import { processJSX, buildHTML } from "@/lib/preview";
 
 export async function GET(
@@ -12,13 +12,12 @@ export async function GET(
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const storageUrl = getStorageUrl(artifact.storage_path);
-  const res = await fetch(storageUrl);
-  if (!res.ok) {
+  const { data: fileBlob, error: downloadError } = await downloadArtifactFile(artifact.storage_path);
+  if (downloadError || !fileBlob) {
     return new NextResponse("Failed to fetch artifact", { status: 502 });
   }
 
-  const source = await res.text();
+  const source = await fileBlob.text();
   const isJSX =
     artifact.storage_path.endsWith(".jsx") ||
     artifact.storage_path.endsWith(".js");

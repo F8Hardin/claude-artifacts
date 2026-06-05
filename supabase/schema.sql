@@ -298,17 +298,8 @@ create index if not exists comments_artifact_id
 -- ─── Storage ─────────────────────────────────────────────────────────────────
 
 insert into storage.buckets (id, name, public)
-  values ('artifacts', 'artifacts', true)
-  on conflict (id) do nothing;
-
-do $$ begin
-  if not exists (
-    select 1 from pg_policies where tablename = 'objects' and policyname = 'Artifacts publicly readable'
-  ) then
-    create policy "Artifacts publicly readable"
-      on storage.objects for select using (bucket_id = 'artifacts');
-  end if;
-end $$;
+  values ('artifacts', 'artifacts', false)
+  on conflict (id) do update set public = false;
 
 do $$ begin
   if not exists (
