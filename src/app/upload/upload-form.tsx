@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { uploadArtifact } from "./actions";
+import type { DragEvent, ChangeEvent } from "react";
 
 function CompatibilityGuide() {
   const [open, setOpen] = useState(false);
@@ -97,24 +98,50 @@ Please rewrite the artifact to follow these constraints. Replace any unavailable
 export function UploadForm() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const submitting = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     if (submitting.current) return;
     submitting.current = true;
     setError(null);
     setPending(true);
+    const formData = new FormData(e.currentTarget);
+    if (selectedFile) formData.set("file", selectedFile);
     const result = await uploadArtifact(formData);
     if (result?.error) {
       setError(result.error);
       setPending(false);
       submitting.current = false;
     }
-    // On success, uploadArtifact calls redirect() — no explicit handling needed
+  }
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    setSelectedFile(e.target.files?.[0] ?? null);
+  }
+
+  function handleDragOver(e: DragEvent) {
+    e.preventDefault();
+    setDragOver(true);
+  }
+
+  function handleDragLeave(e: DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+  }
+
+  function handleDrop(e: DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) setSelectedFile(file);
   }
 
   return (
-    <form action={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {/* Title */}
       <div>
         <label className="block text-sm font-medium mb-1.5" htmlFor="title">
@@ -162,17 +189,37 @@ export function UploadForm() {
 
       {/* File */}
       <div>
-        <label className="block text-sm font-medium mb-1.5" htmlFor="file">
+        <label className="block text-sm font-medium mb-1.5">
           Artifact File{" "}
           <span className="font-normal text-neutral-400">(.html, .jsx, .js — max 5 MB)</span>
         </label>
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={`w-full rounded-lg border-2 border-dashed px-4 py-6 text-center cursor-pointer transition-colors ${
+            dragOver
+              ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+              : "border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500"
+          }`}
+        >
+          {selectedFile ? (
+            <span className="text-sm text-neutral-700 dark:text-neutral-200 font-medium">
+              {selectedFile.name}
+            </span>
+          ) : (
+            <span className="text-sm text-neutral-400">
+              Drop file here or <span className="text-blue-500 underline">tap to browse</span>
+            </span>
+          )}
+        </div>
         <input
-          id="file"
-          name="file"
+          ref={fileInputRef}
           type="file"
           accept=".html,.jsx,.js,text/html,text/javascript,application/javascript,text/plain"
-          required
-          className="w-full text-sm text-neutral-600 dark:text-neutral-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-neutral-100 dark:file:bg-neutral-800 file:text-sm file:font-medium cursor-pointer"
+          onChange={handleFileChange}
+          className="hidden"
         />
       </div>
 
