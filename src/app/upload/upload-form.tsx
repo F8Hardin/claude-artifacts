@@ -214,10 +214,12 @@ export function UploadForm() {
             </span>
           )}
         </div>
+        {/* No accept filter: iOS greys out .jsx in the picker because it has
+            no registered UTI. The server validates by extension, so we let
+            all files be selectable and reject invalid ones server-side. */}
         <input
           ref={fileInputRef}
           type="file"
-          accept=".html,.jsx,.js,text/html,text/javascript,application/javascript,text/plain"
           onChange={handleFileChange}
           className="hidden"
         />
