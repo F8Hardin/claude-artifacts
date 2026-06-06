@@ -220,6 +220,18 @@ export async function searchArtifactRows(query: string): Promise<Artifact[]> {
   return rows.map((r) => toArtifact(r, profiles.get(r.owner_id)));
 }
 
+export async function fetchPublicArtifactsForSitemap(): Promise<
+  { slug: string; updated_at: string }[]
+> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("artifacts")
+    .select("slug, updated_at")
+    .eq("is_public", true)
+    .order("updated_at", { ascending: false });
+  return (data ?? []) as { slug: string; updated_at: string }[];
+}
+
 export async function fetchLikedArtifacts(userId: string): Promise<Artifact[]> {
   const supabase = await createClient();
 

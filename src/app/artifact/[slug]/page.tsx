@@ -12,9 +12,22 @@ export async function generateMetadata({
   const { slug } = await params;
   const artifact = await fetchArtifact(slug);
   if (!artifact) return {};
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3002";
+  const url = `${siteUrl}/artifact/${slug}`;
+  const description = artifact.description || undefined;
+
   return {
     title: `${artifact.title} | Claude Artifacts`,
-    description: artifact.description,
+    description,
+    keywords: artifact.tags.length > 0 ? artifact.tags : undefined,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "website",
+      url,
+      title: artifact.title,
+      description,
+    },
   };
 }
 
