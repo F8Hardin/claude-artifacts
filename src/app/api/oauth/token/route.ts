@@ -30,6 +30,10 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: NextRequest) {
+  console.log("[oauth/token] env check", {
+    has_service_key: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    key_prefix: process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 10),
+  });
   const contentType = request.headers.get("content-type") ?? "";
   let body: Record<string, string>;
   if (contentType.includes("application/json")) {
@@ -76,6 +80,7 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   if (lookupError) {
+    console.error("[oauth/token] code lookup error", lookupError);
     return fail(500, "server_error", "code lookup failed");
   }
   if (!authCode || authCode.used || new Date(authCode.expires_at) < new Date()) {
