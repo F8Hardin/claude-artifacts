@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SITE_URL = Deno.env.get("SITE_URL") ?? "https://claude-artifacts-f8hardins-projects.vercel.app";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -315,8 +316,29 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
 
-  // Everything else requires a valid PAT
-  const rawToken = req.headers.get("X-Artifacts-Token") ?? "";
+  // Resolve token from either custom header or Authorization: Bearer
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const bearerToken = authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : "";
+  const rawToken =
+    req.headers.get("X-Artifacts-Token") || bearerToken || "";
+
+  if (!rawToken) {
+    // Return 401 with OAuth discovery so clients can find the auth server
+    return new Response(
+      JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32001, message: "Authentication required" } }),
+      {
+        status: 401,
+        headers: {
+          ...CORS_HEADERS,
+          "Content-Type": "application/json",
+          "WWW-Authenticate": `Bearer realm="claude-artifacts", as_uri="${SITE_URL}"`,
+        },
+      }
+    );
+  }
+
   const userId = await validateToken(rawToken);
   if (!userId) return rpcErr(id, -32001, "Invalid or expired token");
 
