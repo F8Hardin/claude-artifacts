@@ -37,28 +37,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400, headers: CORS });
   }
 
+  if (!redirect_uri.startsWith("https://")) {
+    return NextResponse.json({ error: "invalid_request", error_description: "redirect_uri must use HTTPS" }, { status: 400, headers: CORS });
+  }
+
   const supabase = await createClient();
-
-  // Validate client exists and redirect_uri prefix matches
-  const { data: client } = await supabase
-    .from("oauth_clients")
-    .select("id, secret_hash, redirect_uri_prefix")
-    .eq("id", client_id)
-    .maybeSingle();
-
-  if (!client) {
-    return NextResponse.json({ error: "invalid_client" }, { status: 401, headers: CORS });
-  }
-
-  // Confidential client: verify secret. Public client: PKCE required instead.
-  const isConfidential = !!client_secret;
-  if (isConfidential && client.secret_hash !== sha256hex(client_secret)) {
-    return NextResponse.json({ error: "invalid_client" }, { status: 401, headers: CORS });
-  }
-
-  if (!redirect_uri.startsWith(client.redirect_uri_prefix)) {
-    return NextResponse.json({ error: "invalid_grant" }, { status: 400, headers: CORS });
-  }
 
   // Validate and consume the authorization code
   const { data: authCode } = await supabase

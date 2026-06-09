@@ -13,21 +13,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
   }
 
+  // Public clients: require HTTPS redirect_uri and PKCE
+  if (!redirectUri.startsWith("https://")) {
+    return NextResponse.json({ error: "invalid_request", error_description: "redirect_uri must use HTTPS" }, { status: 400 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  }
-
-  // Validate client + redirect_uri
-  const { data: client } = await supabase
-    .from("oauth_clients")
-    .select("id, redirect_uri_prefix")
-    .eq("id", clientId)
-    .maybeSingle();
-
-  if (!client || !redirectUri.startsWith(client.redirect_uri_prefix)) {
-    return NextResponse.json({ error: "invalid_client" }, { status: 400 });
   }
 
   // Generate authorization code

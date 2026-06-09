@@ -1,17 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-async function getClient(clientId: string) {
-  const supabase = await createClient();
-  // oauth_clients has RLS disabled — session client can read non-sensitive columns
-  const { data } = await supabase
-    .from("oauth_clients")
-    .select("id, name, redirect_uri_prefix")
-    .eq("id", clientId)
-    .maybeSingle();
-  return data;
-}
-
 export default async function OAuthAuthorizePage({
   searchParams,
 }: {
@@ -20,8 +9,14 @@ export default async function OAuthAuthorizePage({
   const params = await searchParams;
   const { client_id, redirect_uri, state, response_type, code_challenge, code_challenge_method } = params;
 
-  // Validate required params
-  if (!client_id || !redirect_uri || response_type !== "code") {
+  // Require HTTPS redirect_uri and PKCE for public clients
+  if (
+    !redirect_uri ||
+    response_type !== "code" ||
+    !code_challenge ||
+    code_challenge_method !== "S256" ||
+    !redirect_uri.startsWith("https://")
+  ) {
     return (
       <main className="flex-1 flex items-center justify-center">
         <div className="max-w-sm text-center space-y-2">
@@ -32,25 +27,20 @@ export default async function OAuthAuthorizePage({
     );
   }
 
-  const client = await getClient(client_id);
-  if (!client || !redirect_uri.startsWith(client.redirect_uri_prefix)) {
-    return (
-      <main className="flex-1 flex items-center justify-center">
-        <div className="max-w-sm text-center space-y-2">
-          <h1 className="text-xl font-semibold">Unknown client</h1>
-          <p className="text-sm text-neutral-500">This application is not registered.</p>
-        </div>
-      </main>
-    );
-  }
-
-  // Check auth
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     const next = `/oauth/authorize?${new URLSearchParams(params).toString()}`;
     redirect(`/login?next=${encodeURIComponent(next)}`);
+  }
+
+  // Derive a display name from client_id (URL → hostname, or use as-is)
+  let clientName = client_id ?? "This application";
+  try {
+    clientName = new URL(client_id).hostname;
+  } catch {
+    // not a URL — use as-is
   }
 
   return (
@@ -63,16 +53,16 @@ export default async function OAuthAuthorizePage({
             </svg>
           </div>
           <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-            Connect {client.name}
+            Connect {clientName}
           </h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Signed in as <strong>{user.email}</strong>
+            Signed in as <strong>{user!.email}</strong>
           </p>
         </div>
 
         <div className="rounded-lg border border-neutral-100 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 p-4 mb-6 space-y-2">
           <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
-            This will allow {client.name} to:
+            This will allow {clientName} to:
           </p>
           <ul className="space-y-1.5">
             {[
@@ -92,11 +82,11 @@ export default async function OAuthAuthorizePage({
         </div>
 
         <form action="/api/oauth/authorize" method="POST" className="space-y-3">
-          <input type="hidden" name="client_id" value={client_id} />
+          <input type="hidden" name="client_id" value={client_id ?? ""} />
           <input type="hidden" name="redirect_uri" value={redirect_uri} />
           <input type="hidden" name="state" value={state ?? ""} />
-          {code_challenge && <input type="hidden" name="code_challenge" value={code_challenge} />}
-          {code_challenge_method && <input type="hidden" name="code_challenge_method" value={code_challenge_method} />}
+          <input type="hidden" name="code_challenge" value={code_challenge} />
+          <input type="hidden" name="code_challenge_method" value={code_challenge_method} />
           <button
             type="submit"
             className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
@@ -117,3 +107,4 @@ export default async function OAuthAuthorizePage({
     </main>
   );
 }
+
