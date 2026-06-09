@@ -6,18 +6,15 @@ export async function POST(request: NextRequest) {
   const origin = new URL(request.url).origin;
 
   const formData = await request.formData();
-  const rawNext = formData.get("next") as string | null;
-  const next =
-    rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//")
-      ? rawNext
-      : "";
+  const next = (formData.get("next") as string | null) ?? "/";
+  // Only allow internal redirects
+  const safeNext = next.startsWith("/") ? next : "/";
 
-  const callbackUrl = new URL("/auth/callback", origin);
-  if (next) callbackUrl.searchParams.set("next", next);
+  const callbackUrl = `${origin}/auth/callback${safeNext !== "/" ? `?next=${encodeURIComponent(safeNext)}` : ""}`;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "github",
-    options: { redirectTo: callbackUrl.toString() },
+    options: { redirectTo: callbackUrl },
   });
 
   if (error || !data.url) {

@@ -31,12 +31,8 @@ export async function signInWithEmail(
 
   if (error) return { error: error.message };
 
-  const rawNext = formData.get("next") as string | null;
-  const next =
-    rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//")
-      ? rawNext
-      : "/";
-  redirect(next);
+  const next = (formData.get("next") as string | null) ?? "/";
+  redirect(next.startsWith("/") ? next : "/");
 }
 
 export async function signUpWithEmail(

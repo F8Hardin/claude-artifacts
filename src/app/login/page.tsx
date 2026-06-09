@@ -5,16 +5,18 @@ import { EmailForm } from "./email-form";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<Record<string, string>>;
 }) {
+  const params = await searchParams;
+  // Only allow internal redirects — no open redirect
+  const next = params.next?.startsWith("/") ? params.next : "/";
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user) redirect("/");
-
-  const { next = "" } = await searchParams;
+  if (user) redirect(next);
 
   return (
     <main className="flex-1 flex items-center justify-center">
@@ -28,7 +30,7 @@ export default async function LoginPage({
 
         {/* GitHub OAuth */}
         <form action="/api/auth/github" method="POST">
-          {next && <input type="hidden" name="next" value={next} />}
+          <input type="hidden" name="next" value={next} />
           <button
             type="submit"
             className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-lg bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-medium hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors"

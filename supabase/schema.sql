@@ -405,3 +405,37 @@ do $$ begin
       using ((select auth.uid()) = user_id);
   end if;
 end $$;
+
+-- ─── OAuth (Authorization Code flow for claude.ai connector) ─────────────────
+
+-- Registered OAuth clients (no RLS — server-side only via service key)
+create table if not exists public.oauth_clients (
+  id                  text primary key,
+  secret_hash         text not null,
+  name                text not null,
+  redirect_uri_prefix text not null
+);
+
+-- Short-lived single-use authorization codes
+create table if not exists public.oauth_authorization_codes (
+  code            text primary key,
+  client_id       text not null references public.oauth_clients(id) on delete cascade,
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  redirect_uri    text not null,
+  expires_at      timestamptz not null,
+  used            boolean not null default false,
+  code_challenge  text
+);
+
+create index if not exists oauth_codes_expires
+  on public.oauth_authorization_codes (expires_at);
+
+-- Register the claude.ai connector client (idempotent)
+insert into public.oauth_clients (id, secret_hash, name, redirect_uri_prefix)
+values (
+  'claude_artifacts_connector',
+  '9f75a7bc45cbfb5d3d3639385591cee606094b4380a5b61142b0833cefd83463',
+  'claude.ai Connector',
+  'https://claude.ai'
+)
+on conflict (id) do nothing;

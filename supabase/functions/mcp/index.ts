@@ -65,22 +65,47 @@ const TOOLS = [
   // ── Authenticated tools ───────────────────────────────────────────────────
   {
     name: "upload_artifact",
-    description: "Upload a new HTML/JSX/JS artifact to the user's account.",
+    description:
+      "Upload a new HTML/JSX/JS artifact to the user's account. " +
+      "Pass file content directly in the `content` field — you can provide the full source of " +
+      "a file attachment or code you wrote yourself. " +
+      "IMPORTANT: You must set `claude_created` to true only when YOU (Claude) wrote or directly generated " +
+      "the artifact content in this conversation. Do not set it to true for content you did not create.",
     inputSchema: {
       type: "object",
       properties: {
         title: { type: "string", description: "Title (max 100 chars)" },
-        description: { type: "string", description: "Short description" },
-        content: { type: "string", description: "Full source code" },
+        description: { type: "string", description: "Short description of what the artifact does" },
+        content: {
+          type: "string",
+          description:
+            "Full source code or file content (max 5 MB). Paste or pass the complete file content here.",
+        },
         extension: { type: "string", enum: [".html", ".jsx", ".js"] },
         tags: {
           type: "array",
           items: { type: "string" },
-          description: "Max 10 tags, 30 chars each",
+          description: "Up to 10 tags (30 chars each) for discovery",
         },
-        is_public: { type: "boolean", default: true },
+        is_public: {
+          type: "boolean",
+          description: "Whether the artifact is publicly visible (default true)",
+          default: true,
+        },
+        show_name: {
+          type: "boolean",
+          description: "Whether to display the author's name on the artifact (default true)",
+          default: true,
+        },
+        claude_created: {
+          type: "boolean",
+          description:
+            "Set to true ONLY if you (Claude) directly wrote or generated this artifact content " +
+            "in this conversation. This is your attestation of authorship. " +
+            "If you did not create the content, set this to false and the upload will be refused.",
+        },
       },
-      required: ["title", "content", "extension"],
+      required: ["title", "content", "extension", "claude_created"],
     },
   },
   {
@@ -103,6 +128,7 @@ const TOOLS = [
         },
         tags: { type: "array", items: { type: "string" } },
         is_public: { type: "boolean" },
+        show_name: { type: "boolean", description: "Whether to display the author's name" },
       },
       required: ["slug"],
     },
@@ -164,11 +190,21 @@ const TOOLS = [
 // ─── Authenticated tool implementations ───────────────────────────────────────
 
 async function toolUpload(userId: string, args: Record<string, unknown>) {
+  // Authorship attestation — only Claude-created content may be uploaded via this tool.
+  if (args.claude_created !== true) {
+    return {
+      error:
+        "Upload refused: claude_created must be true. " +
+        "This tool only accepts artifacts that Claude directly wrote or generated in this conversation.",
+    };
+  }
+
   const title = String(args.title ?? "").trim();
   const description = String(args.description ?? "").trim();
   const content = String(args.content ?? "");
   const extension = String(args.extension ?? ".html");
   const isPublic = args.is_public !== false;
+  const showName = args.show_name !== false;
   const rawTags = Array.isArray(args.tags) ? args.tags : [];
 
   if (!title || title.length > 100)
@@ -212,7 +248,7 @@ async function toolUpload(userId: string, args: Record<string, unknown>) {
     storage_path: storagePath,
     tags,
     is_public: isPublic,
-    author_name_visible: true,
+    author_name_visible: showName,
   });
   if (insErr) {
     await sb.storage.from("artifacts").remove([storagePath]);
@@ -244,7 +280,7 @@ async function toolUpdate(userId: string, args: Record<string, unknown>) {
   const sb = createClient(SUPABASE_URL, SERVICE_KEY);
   const { data: existing, error: fetchErr } = await sb
     .from("artifacts")
-    .select("storage_path, title, description, tags, is_public")
+    .select("storage_path, title, description, tags, is_public, author_name_visible")
     .eq("slug", slug)
     .eq("owner_id", userId)
     .single();
@@ -278,6 +314,7 @@ async function toolUpdate(userId: string, args: Record<string, unknown>) {
       description: args.description ?? existing.description,
       tags,
       is_public: args.is_public ?? existing.is_public,
+      author_name_visible: args.show_name ?? existing.author_name_visible,
       updated_at: new Date().toISOString(),
     })
     .eq("slug", slug)
