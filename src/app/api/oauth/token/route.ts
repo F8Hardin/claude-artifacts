@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash, randomBytes } from "crypto";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/server";
 
 const CORS = {
@@ -30,10 +31,6 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: NextRequest) {
-  console.log("[oauth/token] env check", {
-    has_service_key: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    key_prefix: process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 10),
-  });
   const contentType = request.headers.get("content-type") ?? "";
   let body: Record<string, string>;
   if (contentType.includes("application/json")) {
@@ -69,13 +66,18 @@ export async function POST(request: NextRequest) {
     return fail(400, "invalid_request", "code is required");
   }
 
-  const supabase = createAdminClient();
+  // oauth_authorization_codes has RLS disabled — anon key is sufficient for lookup.
+  const supabaseAnon = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+  );
 
   // Look up the authorization code by the code itself. client_id is not used as
   // a filter because public clients are inconsistent about sending it.
-  const { data: authCode, error: lookupError } = await supabase
+  // Note: the table has no `id` column — select only the columns that exist.
+  const { data: authCode, error: lookupError } = await supabaseAnon
     .from("oauth_authorization_codes")
-    .select("id, user_id, client_id, redirect_uri, expires_at, used, code_challenge")
+    .select("user_id, client_id, redirect_uri, expires_at, used, code_challenge")
     .eq("code", code)
     .maybeSingle();
 
@@ -106,17 +108,26 @@ export async function POST(request: NextRequest) {
   }
 
   // Consume the code (single use) before issuing the token.
-  await supabase
+  await supabaseAnon
     .from("oauth_authorization_codes")
     .update({ used: true })
     .eq("code", code);
 
-  // Issue a PAT as the access token (service role bypasses RLS on insert).
+  // Issue a PAT as the access token. The personal_access_tokens INSERT policy
+  // requires auth.uid() = user_id, so we need the service-role client here.
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = createAdminClient();
+  } catch (e) {
+    console.error("[oauth/token] createAdminClient failed — SUPABASE_SERVICE_ROLE_KEY missing?", e);
+    return fail(500, "server_error", "token issuance unavailable");
+  }
+
   const rawToken = "cap_" + randomBytes(32).toString("base64url");
   const hash = sha256hex(rawToken);
   const prefix = rawToken.slice(0, 12);
 
-  const { error: patError } = await supabase
+  const { error: patError } = await supabaseAdmin
     .from("personal_access_tokens")
     .insert({
       user_id: authCode.user_id,
@@ -131,7 +142,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Best-effort cleanup of expired codes.
-  supabase
+  supabaseAnon
     .from("oauth_authorization_codes")
     .delete()
     .lt("expires_at", new Date().toISOString())
