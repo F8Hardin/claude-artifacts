@@ -228,14 +228,28 @@ function TokenList({ initialTokens }: { initialTokens: TokenRow[] }) {
 
 // ─── Root export ──────────────────────────────────────────────────────────────
 
+function mcpConfig(mcpUrl: string, token: string) {
+  return `{
+  "mcpServers": {
+    "claude-artifacts": {
+      "type": "http",
+      "url": "${mcpUrl}",
+      "headers": { "X-Artifacts-Token": "${token}" }
+    }
+  }
+}`;
+}
+
+function claudeCodeCommand(mcpUrl: string, token: string) {
+  return `claude mcp add --transport http claude-artifacts \\\n  ${mcpUrl} \\\n  --header "X-Artifacts-Token: ${token}"`;
+}
+
 type TokenManagerProps = {
   initialTokens: TokenRow[];
   mcpUrl: string;
-  mcpConfig: (token: string) => string;
-  claudeCodeCommand: (token: string) => string;
 };
 
-export function TokenManager({ initialTokens, mcpUrl: _mcpUrl, mcpConfig, claudeCodeCommand }: TokenManagerProps) {
+export function TokenManager({ initialTokens, mcpUrl }: TokenManagerProps) {
   const [newToken, setNewToken] = useState<string | null>(null);
   const [tokens, setTokens] = useState(initialTokens);
 
@@ -260,10 +274,10 @@ export function TokenManager({ initialTokens, mcpUrl: _mcpUrl, mcpConfig, claude
                 Your token is filled in — copy the config below
               </p>
               <pre className="overflow-x-auto rounded-lg border border-neutral-200 bg-white p-3 text-xs leading-relaxed text-neutral-800 dark:border-neutral-800 dark:bg-black dark:text-neutral-200 mb-3">
-                <code>{mcpConfig(newToken)}</code>
+                <code>{mcpConfig(mcpUrl, newToken)}</code>
               </pre>
               <pre className="overflow-x-auto rounded-lg border border-neutral-200 bg-white p-3 text-xs leading-relaxed text-neutral-800 dark:border-neutral-800 dark:bg-black dark:text-neutral-200">
-                <code>{claudeCodeCommand(newToken)}</code>
+                <code>{claudeCodeCommand(mcpUrl, newToken)}</code>
               </pre>
             </div>
           </div>

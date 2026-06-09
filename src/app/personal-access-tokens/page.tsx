@@ -5,18 +5,19 @@ import { TokenManager } from "./token-manager";
 
 const MCP_URL = "https://ngpsvlvrsqmpbtmdxvfl.supabase.co/functions/v1/mcp";
 
-const mcpConfig = (token: string) => `{
+const MCP_CONFIG_PLACEHOLDER = `{
   "mcpServers": {
     "claude-artifacts": {
       "type": "http",
       "url": "${MCP_URL}",
-      "headers": { "X-Artifacts-Token": "${token}" }
+      "headers": { "X-Artifacts-Token": "cap_your_token_here" }
     }
   }
 }`;
 
-const claudeCodeCommand = (token: string) =>
-  `claude mcp add --transport http claude-artifacts \\\n  ${MCP_URL} \\\n  --header "X-Artifacts-Token: ${token}"`;
+const CLI_PLACEHOLDER = `claude mcp add --transport http claude-artifacts \\
+  ${MCP_URL} \\
+  --header "X-Artifacts-Token: cap_your_token_here"`;
 
 export default async function PersonalAccessTokensPage() {
   const supabase = await createClient();
@@ -41,7 +42,7 @@ export default async function PersonalAccessTokensPage() {
         </p>
       </div>
 
-      <TokenManager initialTokens={tokens} mcpUrl={MCP_URL} mcpConfig={mcpConfig} claudeCodeCommand={claudeCodeCommand} />
+      <TokenManager initialTokens={tokens} mcpUrl={MCP_URL} />
 
       <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-6 dark:border-neutral-800 dark:bg-neutral-900/50">
         <h2 className="font-display text-2xl tracking-wide mb-1">
@@ -57,14 +58,14 @@ export default async function PersonalAccessTokensPage() {
           MCP config
         </h3>
         <pre className="overflow-x-auto rounded-lg border border-neutral-200 bg-white p-4 text-xs leading-relaxed text-neutral-800 dark:border-neutral-800 dark:bg-black dark:text-neutral-200">
-          <code>{mcpConfig("cap_your_token_here")}</code>
+          <code>{MCP_CONFIG_PLACEHOLDER}</code>
         </pre>
 
         <h3 className="mt-5 text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1.5">
           Claude Code (CLI)
         </h3>
         <pre className="overflow-x-auto rounded-lg border border-neutral-200 bg-white p-4 text-xs leading-relaxed text-neutral-800 dark:border-neutral-800 dark:bg-black dark:text-neutral-200">
-          <code>{claudeCodeCommand("cap_your_token_here")}</code>
+          <code>{CLI_PLACEHOLDER}</code>
         </pre>
 
         <p className="mt-4 text-xs text-neutral-400">
