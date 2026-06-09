@@ -357,3 +357,51 @@ do $$ begin
       using (bucket_id = 'artifacts' and owner_id = (select auth.uid())::text);
   end if;
 end $$;
+
+-- ─── Personal Access Tokens ───────────────────────────────────────────────────
+
+create table if not exists public.personal_access_tokens (
+  id           uuid default gen_random_uuid() primary key,
+  user_id      uuid references auth.users(id) on delete cascade not null,
+  name         text not null,
+  token_hash   text unique not null,
+  token_prefix text not null,
+  created_at   timestamptz default now() not null,
+  last_used_at timestamptz,
+  expires_at   timestamptz
+);
+
+alter table public.personal_access_tokens enable row level security;
+
+create index if not exists pat_user_created
+  on public.personal_access_tokens (user_id, created_at desc);
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'personal_access_tokens' and policyname = 'Users can view own tokens'
+  ) then
+    create policy "Users can view own tokens"
+      on public.personal_access_tokens for select
+      using ((select auth.uid()) = user_id);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'personal_access_tokens' and policyname = 'Users can insert own tokens'
+  ) then
+    create policy "Users can insert own tokens"
+      on public.personal_access_tokens for insert
+      with check ((select auth.uid()) = user_id);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'personal_access_tokens' and policyname = 'Users can delete own tokens'
+  ) then
+    create policy "Users can delete own tokens"
+      on public.personal_access_tokens for delete
+      using ((select auth.uid()) = user_id);
+  end if;
+end $$;
