@@ -6,7 +6,8 @@ export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const clientId = formData.get("client_id") as string;
   const redirectUri = formData.get("redirect_uri") as string;
-  const state = formData.get("state") as string ?? "";
+  const state = (formData.get("state") as string) ?? "";
+  const codeChallenge = (formData.get("code_challenge") as string) ?? null;
 
   if (!clientId || !redirectUri) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
 
   // Generate authorization code
   const code = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
   const { error: insertError } = await supabase
     .from("oauth_authorization_codes")
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       redirect_uri: redirectUri,
       expires_at: expiresAt,
+      code_challenge: codeChallenge,
     });
 
   if (insertError) {

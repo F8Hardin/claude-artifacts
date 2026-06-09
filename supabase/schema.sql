@@ -418,12 +418,13 @@ create table if not exists public.oauth_clients (
 
 -- Short-lived single-use authorization codes
 create table if not exists public.oauth_authorization_codes (
-  code         text primary key,
-  client_id    text not null references public.oauth_clients(id) on delete cascade,
-  user_id      uuid not null references auth.users(id) on delete cascade,
-  redirect_uri text not null,
-  expires_at   timestamptz not null,
-  used         boolean not null default false
+  code            text primary key,
+  client_id       text not null references public.oauth_clients(id) on delete cascade,
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  redirect_uri    text not null,
+  expires_at      timestamptz not null,
+  used            boolean not null default false,
+  code_challenge  text
 );
 
 create index if not exists oauth_codes_expires

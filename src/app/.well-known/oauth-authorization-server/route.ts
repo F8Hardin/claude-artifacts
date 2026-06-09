@@ -1,15 +1,17 @@
-import { NextResponse } from "next/server";
+import { type NextRequest } from "next/server";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3002";
-
-export async function GET() {
-  return NextResponse.json({
-    issuer: siteUrl,
-    authorization_endpoint: `${siteUrl}/oauth/authorize`,
-    token_endpoint: `${siteUrl}/api/oauth/token`,
-    response_types_supported: ["code"],
-    grant_types_supported: ["authorization_code"],
-    code_challenge_methods_supported: ["S256"],
-    token_endpoint_auth_methods_supported: ["client_secret_post"],
-  });
+export async function GET(request: NextRequest) {
+  const { origin } = new URL(request.url);
+  return Response.json(
+    {
+      issuer: origin,
+      authorization_endpoint: `${origin}/oauth/authorize`,
+      token_endpoint: `${origin}/api/oauth/token`,
+      response_types_supported: ["code"],
+      grant_types_supported: ["authorization_code"],
+      code_challenge_methods_supported: ["S256"],
+      token_endpoint_auth_methods_supported: ["none", "client_secret_post"],
+    },
+    { headers: { "Access-Control-Allow-Origin": "*" } }
+  );
 }

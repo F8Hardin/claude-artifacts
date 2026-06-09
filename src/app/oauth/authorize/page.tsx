@@ -18,7 +18,7 @@ export default async function OAuthAuthorizePage({
   searchParams: Promise<Record<string, string>>;
 }) {
   const params = await searchParams;
-  const { client_id, redirect_uri, state, response_type } = params;
+  const { client_id, redirect_uri, state, response_type, code_challenge, code_challenge_method } = params;
 
   // Validate required params
   if (!client_id || !redirect_uri || response_type !== "code") {
@@ -95,6 +95,8 @@ export default async function OAuthAuthorizePage({
           <input type="hidden" name="client_id" value={client_id} />
           <input type="hidden" name="redirect_uri" value={redirect_uri} />
           <input type="hidden" name="state" value={state ?? ""} />
+          {code_challenge && <input type="hidden" name="code_challenge" value={code_challenge} />}
+          {code_challenge_method && <input type="hidden" name="code_challenge_method" value={code_challenge_method} />}
           <button
             type="submit"
             className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
