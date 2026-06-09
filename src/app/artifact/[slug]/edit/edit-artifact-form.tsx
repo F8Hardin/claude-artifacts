@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Artifact } from "@/lib/artifacts";
 import { deleteArtifactDetails, replaceArtifactFile, updateArtifactDetails } from "../actions";
 
 export function EditArtifactForm({ artifact }: { artifact: Artifact }) {
+  const router = useRouter();
   const [updatePending, setUpdatePending] = useState(false);
   const [replacePending, setReplacePending] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
@@ -133,13 +135,23 @@ export function EditArtifactForm({ artifact }: { artifact: Artifact }) {
 
         {error && <p className="text-sm text-red-500">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={updatePending || deletePending}
-          className="w-full py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-        >
-          {updatePending ? "Saving..." : "Save Changes"}
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            disabled={updatePending || deletePending}
+            className="flex-1 py-2.5 rounded-lg border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={updatePending || deletePending}
+            className="flex-1 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {updatePending ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
       </form>
 
       <div className="border-t border-neutral-200 dark:border-neutral-800 pt-6">
