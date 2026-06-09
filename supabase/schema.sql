@@ -265,7 +265,7 @@ do $$ begin
 end $$;
 
 create or replace function public.update_artifact_like_count()
-returns trigger set search_path = '' language plpgsql as $$
+returns trigger set search_path = '' language plpgsql security definer as $$
 begin
   if TG_OP = 'INSERT' then
     update public.artifacts set like_count = like_count + 1 where id = NEW.artifact_id;
