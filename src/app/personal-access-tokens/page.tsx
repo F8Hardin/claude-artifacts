@@ -2,8 +2,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { listTokens } from "./actions";
 import { TokenManager } from "./token-manager";
+import { ConnectorSection } from "./connector-section";
 
 const MCP_URL = "https://ngpsvlvrsqmpbtmdxvfl.supabase.co/functions/v1/mcp";
+const OAUTH_CLIENT_ID = "claude_artifacts_connector";
+const OAUTH_CLIENT_SECRET = "cs_iNXcgOdVM4BQ-Jz3BVo2RJyO-GOPXFlLerXFk-e_Brw";
 
 const MCP_CONFIG_PLACEHOLDER = `{
   "mcpServers": {
@@ -44,36 +47,13 @@ export default async function PersonalAccessTokensPage() {
 
       <TokenManager initialTokens={tokens} mcpUrl={MCP_URL} />
 
-      <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-6 dark:border-neutral-800 dark:bg-neutral-900/50">
-        <h2 className="font-display text-2xl tracking-wide mb-1">
-          Add this to your AI agent
-        </h2>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-          Generate a token above, then connect an agent to the artifacts MCP
-          server. The snippet will update with your real token after you
-          generate one.
-        </p>
-
-        <h3 className="text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1.5">
-          MCP config
-        </h3>
-        <pre className="overflow-x-auto rounded-lg border border-neutral-200 bg-white p-4 text-xs leading-relaxed text-neutral-800 dark:border-neutral-800 dark:bg-black dark:text-neutral-200">
-          <code>{MCP_CONFIG_PLACEHOLDER}</code>
-        </pre>
-
-        <h3 className="mt-5 text-xs font-medium uppercase tracking-wider text-neutral-500 mb-1.5">
-          Claude Code (CLI)
-        </h3>
-        <pre className="overflow-x-auto rounded-lg border border-neutral-200 bg-white p-4 text-xs leading-relaxed text-neutral-800 dark:border-neutral-800 dark:bg-black dark:text-neutral-200">
-          <code>{CLI_PLACEHOLDER}</code>
-        </pre>
-
-        <p className="mt-4 text-xs text-neutral-400">
-          In Claude Desktop or claude.ai, go to Settings → Connectors → Add
-          custom connector, paste the URL above, and add the{" "}
-          <code className="font-mono">X-Artifacts-Token</code> header.
-        </p>
-      </section>
+      <ConnectorSection
+        mcpUrl={MCP_URL}
+        oauthClientId={OAUTH_CLIENT_ID}
+        oauthClientSecret={OAUTH_CLIENT_SECRET}
+        mcpConfigPlaceholder={MCP_CONFIG_PLACEHOLDER}
+        cliPlaceholder={CLI_PLACEHOLDER}
+      />
     </main>
   );
 }
