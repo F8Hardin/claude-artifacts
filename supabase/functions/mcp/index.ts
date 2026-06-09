@@ -3,7 +3,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const SITE_URL = Deno.env.get("SITE_URL") ?? "https://claude-artifacts-f8hardins-projects.vercel.app";
+const SITE_URL =
+  Deno.env.get("SITE_URL") ??
+  "https://claude-artifacts-f8hardins-projects.vercel.app";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -28,7 +30,6 @@ async function validateToken(raw: string): Promise<string | null> {
     .maybeSingle();
   if (error || !data) return null;
   if (data.expires_at && new Date(data.expires_at) < new Date()) return null;
-  // Update last_used_at — fire and forget
   sb.from("personal_access_tokens")
     .update({ last_used_at: new Date().toISOString() })
     .eq("id", data.id)
@@ -61,6 +62,7 @@ function contentTypeForExt(ext: string): string {
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 
 const TOOLS = [
+  // ── Authenticated tools ───────────────────────────────────────────────────
   {
     name: "upload_artifact",
     description: "Upload a new HTML/JSX/JS artifact to the user's account.",
@@ -82,13 +84,13 @@ const TOOLS = [
     },
   },
   {
-    name: "list_artifacts",
+    name: "list_my_artifacts",
     description: "List all artifacts owned by the authenticated user.",
     inputSchema: { type: "object", properties: {} },
   },
   {
     name: "update_artifact",
-    description: "Update metadata and/or content of an existing artifact.",
+    description: "Update metadata and/or content of an existing artifact owned by the user.",
     inputSchema: {
       type: "object",
       properties: {
@@ -114,9 +116,52 @@ const TOOLS = [
       required: ["slug"],
     },
   },
+  // ── Public tools (no auth required, but auth unlocks private artifacts) ───
+  {
+    name: "search_artifacts",
+    description:
+      "Search public artifacts by keyword. Searches title, description, and tags. Returns matching artifacts with their slugs and URLs.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Search term" },
+        limit: {
+          type: "number",
+          description: "Max results to return (default 20, max 50)",
+        },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "get_top_artifacts",
+    description:
+      "Get the most-liked public artifacts. Useful for discovering popular content.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        limit: {
+          type: "number",
+          description: "Number of results (default 10, max 50)",
+        },
+      },
+    },
+  },
+  {
+    name: "get_artifact_content",
+    description:
+      "Download and return the full source code of an artifact so it can be read, analysed, or displayed in the conversation. Works for all public artifacts; requires authentication for private ones.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string", description: "Artifact slug" },
+      },
+      required: ["slug"],
+    },
+  },
 ];
 
-// ─── Tool implementations ─────────────────────────────────────────────────────
+// ─── Authenticated tool implementations ───────────────────────────────────────
 
 async function toolUpload(userId: string, args: Record<string, unknown>) {
   const title = String(args.title ?? "").trim();
@@ -173,18 +218,23 @@ async function toolUpload(userId: string, args: Record<string, unknown>) {
     await sb.storage.from("artifacts").remove([storagePath]);
     return { error: `DB insert failed: ${insErr.message}` };
   }
-  return { slug, url: `/artifact/${slug}` };
+  return { slug, url: `${SITE_URL}/artifact/${slug}` };
 }
 
-async function toolList(userId: string) {
+async function toolListMine(userId: string) {
   const sb = createClient(SUPABASE_URL, SERVICE_KEY);
   const { data, error } = await sb
     .from("artifacts")
-    .select("slug, title, description, tags, is_public, created_at, updated_at")
+    .select("slug, title, description, tags, is_public, like_count, created_at, updated_at")
     .eq("owner_id", userId)
     .order("created_at", { ascending: false });
   if (error) return { error: error.message };
-  return { artifacts: data ?? [] };
+  return {
+    artifacts: (data ?? []).map((a) => ({
+      ...a,
+      url: `${SITE_URL}/artifact/${a.slug}`,
+    })),
+  };
 }
 
 async function toolUpdate(userId: string, args: Record<string, unknown>) {
@@ -233,7 +283,7 @@ async function toolUpdate(userId: string, args: Record<string, unknown>) {
     .eq("slug", slug)
     .eq("owner_id", userId);
   if (updErr) return { error: updErr.message };
-  return { slug, updated: true };
+  return { slug, updated: true, url: `${SITE_URL}/artifact/${slug}` };
 }
 
 async function toolDelete(userId: string, args: Record<string, unknown>) {
@@ -257,6 +307,110 @@ async function toolDelete(userId: string, args: Record<string, unknown>) {
     .eq("owner_id", userId);
   if (delErr) return { error: delErr.message };
   return { slug, deleted: true };
+}
+
+// ─── Public tool implementations ──────────────────────────────────────────────
+
+async function toolSearch(args: Record<string, unknown>) {
+  const query = String(args.query ?? "").trim();
+  if (!query) return { error: "query is required" };
+  const limit = Math.min(Number(args.limit ?? 20), 50);
+  const q = `%${query}%`;
+
+  const sb = createClient(SUPABASE_URL, SERVICE_KEY);
+  const [titleRes, tagRes] = await Promise.all([
+    sb
+      .from("artifacts")
+      .select("slug, title, description, tags, like_count")
+      .or(`title.ilike.${q},description.ilike.${q}`)
+      .eq("is_public", true)
+      .order("like_count", { ascending: false })
+      .limit(limit),
+    sb
+      .from("artifacts")
+      .select("slug, title, description, tags, like_count")
+      .contains("tags", [query.toLowerCase()])
+      .eq("is_public", true)
+      .order("like_count", { ascending: false })
+      .limit(limit),
+  ]);
+
+  if (titleRes.error) return { error: titleRes.error.message };
+
+  const seen = new Set((titleRes.data ?? []).map((r) => r.slug));
+  const combined = [
+    ...(titleRes.data ?? []),
+    ...(tagRes.data ?? []).filter((r) => !seen.has(r.slug)),
+  ].slice(0, limit);
+
+  return {
+    query,
+    count: combined.length,
+    artifacts: combined.map((a) => ({
+      ...a,
+      url: `${SITE_URL}/artifact/${a.slug}`,
+    })),
+  };
+}
+
+async function toolTopArtifacts(args: Record<string, unknown>) {
+  const limit = Math.min(Number(args.limit ?? 10), 50);
+  const sb = createClient(SUPABASE_URL, SERVICE_KEY);
+  const { data, error } = await sb
+    .from("artifacts")
+    .select("slug, title, description, tags, like_count")
+    .eq("is_public", true)
+    .order("like_count", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) return { error: error.message };
+  return {
+    artifacts: (data ?? []).map((a) => ({
+      ...a,
+      url: `${SITE_URL}/artifact/${a.slug}`,
+    })),
+  };
+}
+
+async function toolGetContent(
+  userId: string | null,
+  args: Record<string, unknown>
+) {
+  const slug = String(args.slug ?? "");
+  if (!slug) return { error: "slug is required" };
+
+  const sb = createClient(SUPABASE_URL, SERVICE_KEY);
+  const { data: artifact, error: fetchErr } = await sb
+    .from("artifacts")
+    .select("slug, title, description, tags, is_public, owner_id, storage_path, like_count")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (fetchErr || !artifact) return { error: "Artifact not found" };
+
+  // Private artifacts require ownership
+  if (!artifact.is_public && artifact.owner_id !== userId) {
+    return { error: "This artifact is private" };
+  }
+
+  const { data: blob, error: storageErr } = await sb.storage
+    .from("artifacts")
+    .download(artifact.storage_path);
+  if (storageErr || !blob)
+    return { error: `Could not download artifact: ${storageErr?.message}` };
+
+  const source = await blob.text();
+
+  return {
+    slug: artifact.slug,
+    title: artifact.title,
+    description: artifact.description,
+    tags: artifact.tags,
+    like_count: artifact.like_count,
+    url: `${SITE_URL}/artifact/${artifact.slug}`,
+    extension: artifact.storage_path.match(/\.[^.]+$/)?.[0] ?? ".html",
+    source,
+  };
 }
 
 // ─── MCP protocol ─────────────────────────────────────────────────────────────
@@ -297,14 +451,19 @@ Deno.serve(async (req: Request) => {
     body = await req.json();
   } catch {
     return Response.json(
-      { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } },
+      {
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32700, message: "Parse error" },
+      },
       { status: 400, headers: CORS_HEADERS }
     );
   }
 
   const { method, params, id } = body;
 
-  // initialize and notifications don't require auth
+  // ── No-auth methods ────────────────────────────────────────────────────────
+
   if (method === "initialize") {
     return ok(id, {
       protocolVersion: "2024-11-05",
@@ -312,39 +471,26 @@ Deno.serve(async (req: Request) => {
       serverInfo: { name: "claude-artifacts", version: "1.0.0" },
     });
   }
+
   if (method?.startsWith("notifications/")) {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
 
-  // Resolve token from either custom header or Authorization: Bearer
+  // tools/list is always available — clients discover tools before auth
+  if (method === "tools/list") {
+    return ok(id, { tools: TOOLS });
+  }
+
+  // ── Resolve optional token ─────────────────────────────────────────────────
+
   const authHeader = req.headers.get("Authorization") ?? "";
   const bearerToken = authHeader.startsWith("Bearer ")
     ? authHeader.slice(7).trim()
     : "";
-  const rawToken =
-    req.headers.get("X-Artifacts-Token") || bearerToken || "";
+  const rawToken = req.headers.get("X-Artifacts-Token") || bearerToken || "";
+  const userId = rawToken ? await validateToken(rawToken) : null;
 
-  if (!rawToken) {
-    // Return 401 with OAuth discovery so clients can find the auth server
-    return new Response(
-      JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32001, message: "Authentication required" } }),
-      {
-        status: 401,
-        headers: {
-          ...CORS_HEADERS,
-          "Content-Type": "application/json",
-          "WWW-Authenticate": `Bearer realm="claude-artifacts", as_uri="${SITE_URL}"`,
-        },
-      }
-    );
-  }
-
-  const userId = await validateToken(rawToken);
-  if (!userId) return rpcErr(id, -32001, "Invalid or expired token");
-
-  if (method === "tools/list") {
-    return ok(id, { tools: TOOLS });
-  }
+  // ── Tool calls ─────────────────────────────────────────────────────────────
 
   if (method === "tools/call") {
     const p = (params ?? {}) as {
@@ -352,13 +498,53 @@ Deno.serve(async (req: Request) => {
       arguments?: Record<string, unknown>;
     };
     const args = p.arguments ?? {};
+
+    // Public tools — no auth required
+    if (p.name === "search_artifacts") {
+      const result = await toolSearch(args);
+      return ok(id, {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      });
+    }
+    if (p.name === "get_top_artifacts") {
+      const result = await toolTopArtifacts(args);
+      return ok(id, {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      });
+    }
+    if (p.name === "get_artifact_content") {
+      const result = await toolGetContent(userId, args);
+      return ok(id, {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      });
+    }
+
+    // Authenticated tools
+    if (!userId) {
+      return new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id,
+          error: { code: -32001, message: "Authentication required" },
+        }),
+        {
+          status: 401,
+          headers: {
+            ...CORS_HEADERS,
+            "Content-Type": "application/json",
+            "WWW-Authenticate": `Bearer realm="claude-artifacts", as_uri="${SITE_URL}"`,
+          },
+        }
+      );
+    }
+
     let result: unknown;
     switch (p.name) {
       case "upload_artifact":
         result = await toolUpload(userId, args);
         break;
-      case "list_artifacts":
-        result = await toolList(userId);
+      case "list_my_artifacts":
+        result = await toolListMine(userId);
         break;
       case "update_artifact":
         result = await toolUpdate(userId, args);
