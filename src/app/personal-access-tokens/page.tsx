@@ -4,7 +4,7 @@ import { listTokens } from "./actions";
 import { TokenManager } from "./token-manager";
 import { ConnectorSection } from "./connector-section";
 
-const MCP_URL = "https://ngpsvlvrsqmpbtmdxvfl.supabase.co/functions/v1/mcp";
+const MCP_URL = "https://claude-artifacts-mu.vercel.app/api/mcp";
 const OAUTH_CLIENT_ID = "claude_artifacts_connector";
 const OAUTH_CLIENT_SECRET = "cs_iNXcgOdVM4BQ-Jz3BVo2RJyO-GOPXFlLerXFk-e_Brw";
 
