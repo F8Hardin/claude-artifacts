@@ -7,7 +7,7 @@ function createDefaultUsername(): string {
   return `user-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function EmailForm() {
+export function EmailForm({ next = "" }: { next?: string }) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [username, setUsername] = useState(createDefaultUsername);
   const [pending, setPending] = useState(false);
@@ -32,6 +32,7 @@ export function EmailForm() {
   return (
     <div className="space-y-4">
       <form action={handleSubmit} className="space-y-3">
+        {next && <input type="hidden" name="next" value={next} />}
         <input
           name="email"
           type="email"

@@ -31,7 +31,12 @@ export async function signInWithEmail(
 
   if (error) return { error: error.message };
 
-  redirect("/");
+  const rawNext = formData.get("next") as string | null;
+  const next =
+    rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//")
+      ? rawNext
+      : "/";
+  redirect(next);
 }
 
 export async function signUpWithEmail(
