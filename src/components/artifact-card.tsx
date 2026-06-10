@@ -10,7 +10,7 @@ export function ArtifactCard({ artifact }: { artifact: Artifact }) {
   return (
     <Link
       href={`/artifact/${artifact.slug}`}
-      className="group block rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-5 transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:shadow-lg hover:border-blue-400 dark:hover:border-blue-500"
+      className="group block rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-5 transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800 active:bg-neutral-200 dark:active:bg-neutral-700 hover:shadow-lg hover:border-blue-400 dark:hover:border-blue-500"
     >
       <div className="flex items-start justify-between gap-2">
         <h2 className="text-lg font-semibold group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
