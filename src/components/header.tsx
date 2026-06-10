@@ -38,7 +38,7 @@ export async function Header() {
         </Link>
 
         <span className="font-display text-2xl tracking-wider flex-1">
-          Claude-Artifacts-Glossary
+          Claude Artifacts Glossary
         </span>
 
         <div className="flex items-center gap-3">

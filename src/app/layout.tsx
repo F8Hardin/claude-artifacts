@@ -20,7 +20,7 @@ const bebasNeue = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
-  title: "Claude-Artifacts-Glossary",
+  title: "Claude Artifacts Glossary",
   description: "A gallery of interactive artifacts built with Claude.",
 };
 
