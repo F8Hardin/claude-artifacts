@@ -59,7 +59,7 @@ export default async function Home({
     <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
       <div className="mb-8 text-center">
         <h1 className="font-display text-6xl tracking-widest mb-2">
-          Claude Artifacts
+          Claude-Artifacts-Glossary
         </h1>
         <p className="text-neutral-500 dark:text-neutral-400">
           Interactive artifacts built with Claude. Click to explore.
