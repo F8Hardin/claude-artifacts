@@ -29,7 +29,7 @@ export async function Header() {
         <Link
           href="/"
           aria-label="Home"
-          className="flex items-center gap-2 text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          className="flex items-center gap-2 text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors shrink-0"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
             <path d="M11.47 3.841a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.061l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 1 0 1.061 1.06l8.69-8.689Z" />
@@ -37,11 +37,11 @@ export async function Header() {
           </svg>
         </Link>
 
-        <span className="font-display text-2xl tracking-wider flex-1">
+        <span className="font-display text-lg sm:text-2xl tracking-wider flex-1 min-w-0 truncate">
           Claude Artifacts Glossary
         </span>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {user ? (
             <>
               <Link
@@ -50,7 +50,7 @@ export async function Header() {
               >
                 Upload
               </Link>
-              <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2">
                 {profile?.avatar_url && (
                   <Image
                     src={profile.avatar_url}
