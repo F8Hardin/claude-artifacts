@@ -12,10 +12,13 @@ export async function downloadArtifactFile(
 }
 
 function contentTypeForPath(storagePath: string): string {
-  if (storagePath.endsWith(".jsx") || storagePath.endsWith(".js")) {
-    return "text/plain; charset=utf-8";
+  if (storagePath.endsWith(".html")) {
+    return "text/html; charset=utf-8";
   }
-  return "text/html; charset=utf-8";
+  // Everything else (.jsx, .js, .tsx, .ts, .svg, .md, .markdown, .mmd) is
+  // stored as plain text so direct storage URLs don't execute scripts —
+  // the preview routes apply the appropriate Content-Type when rendering.
+  return "text/plain; charset=utf-8";
 }
 
 export async function uploadArtifactFile(

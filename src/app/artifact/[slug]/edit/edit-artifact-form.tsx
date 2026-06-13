@@ -164,7 +164,7 @@ export function EditArtifactForm({ artifact }: { artifact: Artifact }) {
           <input
             name="file"
             type="file"
-            accept=".html,.jsx,.js,text/html,application/javascript"
+            accept=".html,.jsx,.js,.tsx,.ts,.svg,.md,.markdown,.mmd,text/html,application/javascript"
             required
             className="flex-1 text-sm text-neutral-600 dark:text-neutral-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-neutral-100 dark:file:bg-neutral-800 file:text-sm file:font-medium cursor-pointer"
           />
