@@ -185,7 +185,33 @@ const TOOLS = [
       required: ["slug"],
     },
   },
+  {
+    name: "get_artifact_setup_guide",
+    description:
+      "Get the compatibility guide for building artifacts that can be uploaded to Claude Artifacts. " +
+      "Explains what libraries and APIs are available in the browser-based preview environment " +
+      "(React, Tailwind, Recharts) and what is not (other npm packages, Node.js/Next.js APIs, " +
+      "lucide-react icons, etc.), along with the structural rules an artifact must follow. " +
+      "Call this before writing an artifact so it can be uploaded successfully.",
+    inputSchema: { type: "object", properties: {} },
+  },
 ];
+
+// ─── Setup guide ───────────────────────────────────────────────────────────────
+
+const SETUP_GUIDE = `Make this artifact compatible with a browser-based JSX preview that has:
+- React 18 (loaded as UMD global — do NOT import React, just use hooks directly)
+- Tailwind CSS (via CDN — all utility classes available)
+- Recharts 2.5 (loaded as UMD global)
+- No other npm packages available (no axios, no framer-motion, no date-fns, etc.)
+- lucide-react icons render as generic placeholders — replace with inline SVGs or emoji
+- No Node.js APIs (no fs, no process, no fetch to relative paths)
+- No Next.js features (no next/link, no next/router, no server components)
+- Must export default a single function component
+- All state, logic, and UI must be in one file
+- Use standard browser APIs (fetch to absolute URLs is fine)
+
+Please rewrite the artifact to follow these constraints. Replace any unavailable libraries with inline implementations or remove them.`;
 
 // ─── Authenticated tool implementations ───────────────────────────────────────
 
@@ -553,6 +579,11 @@ Deno.serve(async (req: Request) => {
       const result = await toolGetContent(userId, args);
       return ok(id, {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      });
+    }
+    if (p.name === "get_artifact_setup_guide") {
+      return ok(id, {
+        content: [{ type: "text", text: SETUP_GUIDE }],
       });
     }
 
