@@ -54,9 +54,9 @@ function titleToSlug(title: string): string {
 }
 
 function contentTypeForExt(ext: string): string {
-  return ext === ".jsx" || ext === ".js"
-    ? "text/plain; charset=utf-8"
-    : "text/html; charset=utf-8";
+  return ext === ".html"
+    ? "text/html; charset=utf-8"
+    : "text/plain; charset=utf-8";
 }
 
 // ─── Tool definitions ─────────────────────────────────────────────────────────
@@ -66,7 +66,8 @@ const TOOLS = [
   {
     name: "upload_artifact",
     description:
-      "Upload a new HTML/JSX/JS artifact to the user's account. " +
+      "Upload a new artifact to the user's account. Supports HTML, React (JSX/TSX/JS/TS), " +
+      "SVG, Markdown, and Mermaid diagram files. " +
       "Pass file content directly in the `content` field — you can provide the full source of " +
       "a file attachment or code you wrote yourself. " +
       "IMPORTANT: You must set `claude_created` to true only when YOU (Claude) wrote or directly generated " +
@@ -81,7 +82,14 @@ const TOOLS = [
           description:
             "Full source code or file content (max 5 MB). Paste or pass the complete file content here.",
         },
-        extension: { type: "string", enum: [".html", ".jsx", ".js"] },
+        extension: {
+          type: "string",
+          enum: [".html", ".jsx", ".js", ".tsx", ".ts", ".svg", ".md", ".markdown", ".mmd"],
+          description:
+            ".html (rendered as-is), .jsx/.js/.tsx/.ts (React component preview), " +
+            ".svg (rendered as an image), .md/.markdown (rendered as formatted text), " +
+            ".mmd (rendered as a Mermaid diagram)",
+        },
         tags: {
           type: "array",
           items: { type: "string" },
@@ -189,9 +197,10 @@ const TOOLS = [
     name: "get_artifact_setup_guide",
     description:
       "Get the compatibility guide for building artifacts that can be uploaded to Claude Artifacts. " +
-      "Explains what libraries and APIs are available in the browser-based preview environment " +
-      "(React, Tailwind, Recharts) and what is not (other npm packages, Node.js/Next.js APIs, " +
-      "lucide-react icons, etc.), along with the structural rules an artifact must follow. " +
+      "Explains what libraries and APIs are available in the browser-based React/TSX preview environment " +
+      "(React, TypeScript, Tailwind, Recharts, d3, framer-motion, lucide-react icons) and what is not " +
+      "(other npm packages, Node.js/Next.js APIs, etc.), along with the structural rules an artifact must " +
+      "follow, plus the other supported file formats (.html, .svg, .md/.markdown, .mmd). " +
       "Call this before writing an artifact so it can be uploaded successfully.",
     inputSchema: { type: "object", properties: {} },
   },
@@ -199,19 +208,27 @@ const TOOLS = [
 
 // ─── Setup guide ───────────────────────────────────────────────────────────────
 
-const SETUP_GUIDE = `Make this artifact compatible with a browser-based JSX preview that has:
+const SETUP_GUIDE = `Make this artifact compatible with a browser-based JSX/TSX preview that has:
 - React 18 (loaded as UMD global — do NOT import React, just use hooks directly)
+- TypeScript/TSX is supported (type annotations, interfaces, generics are stripped before running)
 - Tailwind CSS (via CDN — all utility classes available)
 - Recharts 2.5 (loaded as UMD global)
-- No other npm packages available (no axios, no framer-motion, no date-fns, etc.)
-- lucide-react icons render as generic placeholders — replace with inline SVGs or emoji
+- d3 7 and framer-motion 11 (loaded as UMD globals)
+- lucide-react icons render with real icon shapes for common icons (X, Check, ChevronDown/Up/Left/Right, Search, Menu, Plus, Minus, Trash2, Edit, Settings, User, Heart, Star, ArrowRight/Left, Download, Upload, Copy, ExternalLink, Info, AlertCircle, CheckCircle, XCircle, Calendar, Clock, Mail, Lock, Eye, EyeOff, Loader2); other icon names fall back to a generic placeholder shape
+- No other npm packages available (no axios, no date-fns, etc.)
 - No Node.js APIs (no fs, no process, no fetch to relative paths)
 - No Next.js features (no next/link, no next/router, no server components)
 - Must export default a single function component
 - All state, logic, and UI must be in one file
 - Use standard browser APIs (fetch to absolute URLs is fine)
 
-Please rewrite the artifact to follow these constraints. Replace any unavailable libraries with inline implementations or remove them.`;
+Please rewrite the artifact to follow these constraints. Replace any unavailable libraries with inline implementations or remove them.
+
+Other supported formats (uploaded with a different extension, not subject to the JSX/TSX rules above):
+- .html — rendered as-is
+- .svg — rendered as an image
+- .md / .markdown — rendered as styled, formatted text
+- .mmd — rendered as a Mermaid diagram`;
 
 // ─── Authenticated tool implementations ───────────────────────────────────────
 
@@ -235,8 +252,8 @@ async function toolUpload(userId: string, args: Record<string, unknown>) {
 
   if (!title || title.length > 100)
     return { error: "title is required and must be ≤ 100 chars" };
-  if (![".html", ".jsx", ".js"].includes(extension))
-    return { error: "extension must be .html, .jsx, or .js" };
+  if (![".html", ".jsx", ".js", ".tsx", ".ts", ".svg", ".md", ".markdown", ".mmd"].includes(extension))
+    return { error: "extension must be one of .html, .jsx, .js, .tsx, .ts, .svg, .md, .markdown, .mmd" };
   if (!content) return { error: "content is required" };
   if (content.length > 5 * 1024 * 1024)
     return { error: "content must be under 5 MB" };
