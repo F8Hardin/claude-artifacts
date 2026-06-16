@@ -100,6 +100,10 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
+-- Trigger functions fire regardless of caller privileges, so they never need
+-- to be directly callable as PostgREST RPCs. Revoke the default PUBLIC EXECUTE.
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+
 -- ─── Artifacts ───────────────────────────────────────────────────────────────
 
 create table if not exists public.artifacts (
@@ -279,6 +283,10 @@ $$;
 create or replace trigger on_like_change
   after insert or delete on public.likes
   for each row execute procedure public.update_artifact_like_count();
+
+-- Trigger-only function: remove the default PUBLIC EXECUTE so it is not
+-- exposed as a callable PostgREST RPC.
+revoke execute on function public.update_artifact_like_count() from public, anon, authenticated;
 
 -- ─── Indexes ─────────────────────────────────────────────────────────────────
 
