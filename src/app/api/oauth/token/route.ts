@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash, randomBytes } from "crypto";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/server";
 
 const CORS = {
@@ -64,12 +63,18 @@ export async function POST(request: NextRequest) {
     return fail(400, "invalid_request", "code is required");
   }
 
-  const supabaseAnon = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  );
+  // These OAuth tables have RLS enabled with no policies, so they are only
+  // reachable via the service-role client (which bypasses RLS). Never use the
+  // anon/publishable key here — that key is public and would expose live codes.
+  let supabase;
+  try {
+    supabase = createAdminClient();
+  } catch (e) {
+    console.error("[oauth/token] createAdminClient failed — SUPABASE_SERVICE_ROLE_KEY missing?", e);
+    return fail(500, "server_error", "token issuance unavailable");
+  }
 
-  const { data: authCode, error: lookupError } = await supabaseAnon
+  const { data: authCode, error: lookupError } = await supabase
     .from("oauth_authorization_codes")
     .select("user_id, client_id, redirect_uri, expires_at, used, code_challenge")
     .eq("code", code)
@@ -98,24 +103,16 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  await supabaseAnon
+  await supabase
     .from("oauth_authorization_codes")
     .update({ used: true })
     .eq("code", code);
-
-  let supabaseAdmin;
-  try {
-    supabaseAdmin = createAdminClient();
-  } catch (e) {
-    console.error("[oauth/token] createAdminClient failed — SUPABASE_SERVICE_ROLE_KEY missing?", e);
-    return fail(500, "server_error", "token issuance unavailable");
-  }
 
   const rawToken = "cap_" + randomBytes(32).toString("base64url");
   const hash = sha256hex(rawToken);
   const prefix = rawToken.slice(0, 12);
 
-  const { error: patError } = await supabaseAdmin
+  const { error: patError } = await supabase
     .from("personal_access_tokens")
     .insert({
       user_id: authCode.user_id,
@@ -129,7 +126,7 @@ export async function POST(request: NextRequest) {
     return fail(500, "server_error", "could not issue token");
   }
 
-  supabaseAnon
+  supabase
     .from("oauth_authorization_codes")
     .delete()
     .lt("expires_at", new Date().toISOString())

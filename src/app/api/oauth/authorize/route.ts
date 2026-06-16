@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { randomBytes } from "crypto";
 
 export async function POST(request: NextRequest) {
@@ -30,7 +30,11 @@ export async function POST(request: NextRequest) {
   const code = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-  const { error: insertError } = await supabase
+  // oauth_authorization_codes has RLS enabled with no policies, so it is only
+  // writable via the service-role client (which bypasses RLS). The user-session
+  // client above is used solely to authenticate the user.
+  const admin = createAdminClient();
+  const { error: insertError } = await admin
     .from("oauth_authorization_codes")
     .insert({
       code,

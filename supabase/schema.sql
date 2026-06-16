@@ -408,7 +408,7 @@ end $$;
 
 -- ─── OAuth (Authorization Code flow for claude.ai connector) ─────────────────
 
--- Registered OAuth clients (no RLS — server-side only via service key)
+-- Registered OAuth clients (server-side only via service key)
 create table if not exists public.oauth_clients (
   id                  text primary key,
   secret_hash         text not null,
@@ -429,6 +429,14 @@ create table if not exists public.oauth_authorization_codes (
 
 create index if not exists oauth_codes_expires
   on public.oauth_authorization_codes (expires_at);
+
+-- These tables must never be reachable through the public anon/authenticated
+-- API. They hold OAuth client secrets and live authorization codes (which can
+-- be exchanged for access tokens). Enable RLS with NO policies so PostgREST
+-- denies all anon/authenticated access; the server reaches them only through
+-- the service-role key, which bypasses RLS.
+alter table public.oauth_clients enable row level security;
+alter table public.oauth_authorization_codes enable row level security;
 
 -- Register the claude.ai connector client (idempotent)
 insert into public.oauth_clients (id, secret_hash, name, redirect_uri_prefix)
