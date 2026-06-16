@@ -131,7 +131,16 @@ export function buildHTML(title: string, jsxCode: string, componentName: string)
   <script src="https://cdn.tailwindcss.com"></script>
 ${cdnScripts}
 ${shimScripts}
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!--
+    Pin Babel to the last 7.x release. The "latest" tag now resolves to
+    @babel/standalone 8.x, whose @babel/preset-react defaults the JSX runtime
+    to "automatic". Automatic-runtime output imports the jsx helpers from
+    "react/jsx-runtime", which doesn't exist in this UMD/global setup, so every
+    JSX artifact throws at runtime (surfaced as a cross-origin "Script error").
+    Babel 7 defaults to the classic runtime (React.createElement), which is what
+    this preview environment provides via the global React.
+  -->
+  <script src="https://unpkg.com/@babel/standalone@7.29.7/babel.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, -apple-system, sans-serif; }
