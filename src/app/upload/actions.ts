@@ -42,7 +42,7 @@ export async function uploadArtifact(
   const agreedToTerms = formData.get("agree_terms") === "true";
   const file = formData.get("file") as File | null;
 
-  const allowedExtensions = [".html", ".jsx", ".js"];
+  const allowedExtensions = [".html", ".jsx", ".js", ".tsx", ".ts", ".svg", ".md", ".markdown", ".mmd"];
   const fileExt = allowedExtensions.find((ext) => file?.name.endsWith(ext));
 
   const allowedMimes = [
@@ -51,6 +51,11 @@ export async function uploadArtifact(
     "application/javascript",
     "text/plain",
     "text/jsx",
+    "image/svg+xml",
+    "text/markdown",
+    "text/x-typescript",
+    "application/typescript",
+    "text/mermaid",
     "",  // some browsers omit MIME for unknown types
   ];
 
@@ -60,7 +65,7 @@ export async function uploadArtifact(
   // Validate by extension only. Browser-supplied MIME types are unreliable
   // (iOS assigns .jsx files application/octet-stream), so MIME checks cause
   // false rejections without adding real security.
-  if (!fileExt) return { error: "Only .html, .jsx, or .js files are allowed." };
+  if (!fileExt) return { error: "Only .html, .jsx, .js, .tsx, .ts, .svg, .md, .markdown, or .mmd files are allowed." };
   if (file.type && !allowedMimes.includes(file.type.split(";")[0].trim())) {
     return { error: "Invalid file type." };
   }
