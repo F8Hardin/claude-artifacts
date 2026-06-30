@@ -12,7 +12,7 @@ function CompatibilityGuide() {
 - React 18 (loaded as UMD global — do NOT import React, just use hooks directly)
 - TypeScript/TSX is supported (type annotations, interfaces, generics are stripped before running)
 - Tailwind CSS (via CDN — all utility classes available)
-- Recharts 2.5 (loaded as UMD global)
+- Recharts 2.5 (loaded as UMD global) — but avoid ResponsiveContainer, see warning below
 - d3 7 and framer-motion 11 (loaded as UMD globals)
 - lucide-react icons render with real icon shapes for common icons (X, Check, ChevronDown/Up/Left/Right, Search, Menu, Plus, Minus, Trash2, Edit, Settings, User, Heart, Star, ArrowRight/Left, Download, Upload, Copy, ExternalLink, Info, AlertCircle, CheckCircle, XCircle, Calendar, Clock, Mail, Lock, Eye, EyeOff, Loader2); other icon names fall back to a generic placeholder shape
 - No other npm packages available (no axios, no date-fns, etc.)
@@ -21,6 +21,8 @@ function CompatibilityGuide() {
 - Must export default a single function component
 - All state, logic, and UI must be in one file
 - Use standard browser APIs (fetch to absolute URLs is fine)
+
+Recharts ResponsiveContainer warning: ResponsiveContainer relies on ResizeObserver to measure its parent. Inside the sandboxed/cross-origin preview iframe, iOS Safari's ResizeObserver can report a zero size or fail to settle, and Recharts throws during the commit phase instead of degrading gracefully — this crashes the whole component with an undebuggable "Script error." Avoid ResponsiveContainer entirely. Prefer either a hand-rolled inline SVG chart with a fixed viewBox and width: 100% CSS scaling (no resize observation at all), or Recharts components given an explicit fixed width/height prop instead of ResponsiveContainer. Also avoid scale="log" on axes without an explicit, strictly-positive domain — log scales with an auto domain can resolve toward 0, producing NaN in the rendered path.
 
 Please rewrite the artifact to follow these constraints. Replace any unavailable libraries with inline implementations or remove them.`;
 
@@ -45,7 +47,7 @@ Please rewrite the artifact to follow these constraints. Replace any unavailable
               <li><strong>React 18</strong> — hooks, JSX, all standard APIs</li>
               <li><strong>TypeScript/TSX</strong> — types are stripped before running</li>
               <li><strong>Tailwind CSS</strong> — all utility classes</li>
-              <li><strong>Recharts 2.5</strong> — charts and data visualization</li>
+              <li><strong>Recharts 2.5</strong> — charts and data visualization (avoid <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">ResponsiveContainer</code>, see Known Issues below)</li>
               <li><strong>d3 7</strong> and <strong>framer-motion 11</strong> — loaded as UMD globals</li>
               <li><strong>lucide-react</strong> — common icons render as real shapes; uncommon icons fall back to a placeholder</li>
             </ul>
@@ -70,6 +72,20 @@ Please rewrite the artifact to follow these constraints. Replace any unavailable
               <li>Must <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">export default</code> a single function component</li>
               <li>Everything in one file — no multi-file imports</li>
               <li>Use browser <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">fetch()</code> with absolute URLs if needed</li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-medium text-neutral-800 dark:text-neutral-100 mb-2">
+              Known issues:
+            </h4>
+            <ul className="list-disc list-inside space-y-1 text-xs">
+              <li>
+                <strong>Recharts <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">ResponsiveContainer</code></strong> can crash on iOS Safari inside the preview iframe — its <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">ResizeObserver</code> can report a zero size or fail to settle. Use a hand-rolled inline SVG chart with a fixed <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">viewBox</code>, or pass explicit <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">width</code>/<code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">height</code> instead.
+              </li>
+              <li>
+                Avoid <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">scale=&quot;log&quot;</code> on axes without an explicit, strictly-positive <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">domain</code> — an auto domain can resolve toward 0 and produce <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">NaN</code> in the rendered path.
+              </li>
             </ul>
           </div>
 

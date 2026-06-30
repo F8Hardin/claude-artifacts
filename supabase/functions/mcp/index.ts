@@ -59,6 +59,23 @@ function contentTypeForExt(ext: string): string {
     : "text/plain; charset=utf-8";
 }
 
+const REACT_SOURCE_EXTENSIONS = new Set([".jsx", ".js", ".tsx", ".ts"]);
+
+// Non-blocking static check — never rejects an upload, only warns. Recharts'
+// ResponsiveContainer depends on ResizeObserver, which can crash artifacts
+// on iOS Safari inside the sandboxed preview iframe; see SETUP_GUIDE.
+function lintArtifactSource(content: string, ext: string): string[] {
+  if (!REACT_SOURCE_EXTENSIONS.has(ext)) return [];
+  if (/\bResponsiveContainer\b/.test(content)) {
+    return [
+      "Uses Recharts' ResponsiveContainer, which can crash on iOS Safari inside the artifact preview iframe " +
+        "(ResizeObserver can report a zero size or fail to settle). Replace with a hand-rolled inline SVG " +
+        "chart or pass explicit width/height instead of ResponsiveContainer.",
+    ];
+  }
+  return [];
+}
+
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 
 const TOOLS = [
@@ -71,7 +88,9 @@ const TOOLS = [
       "Pass file content directly in the `content` field — you can provide the full source of " +
       "a file attachment or code you wrote yourself. " +
       "IMPORTANT: You must set `claude_created` to true only when YOU (Claude) wrote or directly generated " +
-      "the artifact content in this conversation. Do not set it to true for content you did not create.",
+      "the artifact content in this conversation. Do not set it to true for content you did not create. " +
+      "The response may include a `warnings` array for non-fatal issues detected in the source (e.g. " +
+      "Recharts ResponsiveContainer usage) — the upload still succeeds, but you should fix and re-upload.",
     inputSchema: {
       type: "object",
       properties: {
@@ -200,7 +219,8 @@ const TOOLS = [
       "Explains what libraries and APIs are available in the browser-based React/TSX preview environment " +
       "(React, TypeScript, Tailwind, Recharts, d3, framer-motion, lucide-react icons) and what is not " +
       "(other npm packages, Node.js/Next.js APIs, etc.), along with the structural rules an artifact must " +
-      "follow, plus the other supported file formats (.html, .svg, .md/.markdown, .mmd). " +
+      "follow, plus the other supported file formats (.html, .svg, .md/.markdown, .mmd). Also covers a " +
+      "known Recharts ResponsiveContainer crash on iOS Safari and how to avoid it. " +
       "Call this before writing an artifact so it can be uploaded successfully.",
     inputSchema: { type: "object", properties: {} },
   },
@@ -212,7 +232,7 @@ const SETUP_GUIDE = `Make this artifact compatible with a browser-based JSX/TSX 
 - React 18 (loaded as UMD global — do NOT import React, just use hooks directly)
 - TypeScript/TSX is supported (type annotations, interfaces, generics are stripped before running)
 - Tailwind CSS (via CDN — all utility classes available)
-- Recharts 2.5 (loaded as UMD global)
+- Recharts 2.5 (loaded as UMD global) — but avoid ResponsiveContainer, see warning below
 - d3 7 and framer-motion 11 (loaded as UMD globals)
 - lucide-react icons render with real icon shapes for common icons (X, Check, ChevronDown/Up/Left/Right, Search, Menu, Plus, Minus, Trash2, Edit, Settings, User, Heart, Star, ArrowRight/Left, Download, Upload, Copy, ExternalLink, Info, AlertCircle, CheckCircle, XCircle, Calendar, Clock, Mail, Lock, Eye, EyeOff, Loader2); other icon names fall back to a generic placeholder shape
 - No other npm packages available (no axios, no date-fns, etc.)
@@ -221,6 +241,8 @@ const SETUP_GUIDE = `Make this artifact compatible with a browser-based JSX/TSX 
 - Must export default a single function component
 - All state, logic, and UI must be in one file
 - Use standard browser APIs (fetch to absolute URLs is fine)
+
+Recharts ResponsiveContainer warning: ResponsiveContainer relies on ResizeObserver to measure its parent. Inside the sandboxed/cross-origin preview iframe, iOS Safari's ResizeObserver can report a zero size or fail to settle, and Recharts throws during the commit phase instead of degrading gracefully — this crashes the whole component with an undebuggable "Script error." Avoid ResponsiveContainer entirely. Prefer either a hand-rolled inline SVG chart with a fixed viewBox and width: 100% CSS scaling (no resize observation at all), or Recharts components given an explicit fixed width/height prop instead of ResponsiveContainer. Also avoid scale="log" on axes without an explicit, strictly-positive domain — log scales with an auto domain can resolve toward 0, producing NaN in the rendered path.
 
 Please rewrite the artifact to follow these constraints. Replace any unavailable libraries with inline implementations or remove them.
 
@@ -297,7 +319,12 @@ async function toolUpload(userId: string, args: Record<string, unknown>) {
     await sb.storage.from("artifacts").remove([storagePath]);
     return { error: `DB insert failed: ${insErr.message}` };
   }
-  return { slug, url: `${SITE_URL}/artifact/${slug}` };
+  const warnings = lintArtifactSource(content, extension);
+  return {
+    slug,
+    url: `${SITE_URL}/artifact/${slug}`,
+    ...(warnings.length > 0 ? { warnings } : {}),
+  };
 }
 
 async function toolListMine(userId: string) {
@@ -329,6 +356,7 @@ async function toolUpdate(userId: string, args: Record<string, unknown>) {
     .single();
   if (fetchErr || !existing) return { error: "Artifact not found" };
 
+  let warnings: string[] = [];
   if (typeof args.content === "string" && args.content.length > 0) {
     const ext = existing.storage_path.match(/\.[^.]+$/)?.[0] ?? ".html";
     const contentType = contentTypeForExt(ext);
@@ -340,6 +368,7 @@ async function toolUpdate(userId: string, args: Record<string, unknown>) {
         { contentType, upsert: true }
       );
     if (upErr) return { error: `Storage update failed: ${upErr.message}` };
+    warnings = lintArtifactSource(args.content as string, ext);
   }
 
   const tags = args.tags
@@ -363,7 +392,12 @@ async function toolUpdate(userId: string, args: Record<string, unknown>) {
     .eq("slug", slug)
     .eq("owner_id", userId);
   if (updErr) return { error: updErr.message };
-  return { slug, updated: true, url: `${SITE_URL}/artifact/${slug}` };
+  return {
+    slug,
+    updated: true,
+    url: `${SITE_URL}/artifact/${slug}`,
+    ...(warnings.length > 0 ? { warnings } : {}),
+  };
 }
 
 async function toolDelete(userId: string, args: Record<string, unknown>) {

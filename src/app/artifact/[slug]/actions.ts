@@ -12,6 +12,7 @@ import {
   uploadArtifactFile,
   updateArtifactStoragePath,
 } from "@/lib/supabase/artifacts";
+import { lintArtifactSource } from "@/lib/artifact-lint";
 
 function parseTags(tagsRaw: string): string[] {
   return [
@@ -97,15 +98,15 @@ export async function replaceArtifactFile(
 
   const newStoragePath = `${user.id}/${slug}${fileExt}`;
   const pathChanged = artifact.storage_path !== newStoragePath;
+  const fileBuffer = await file.arrayBuffer();
 
   // Delete old file first, then upload new (avoids needing storage UPDATE policy)
   await deleteArtifactFile(artifact.storage_path);
 
-  const { error: uploadError } = await uploadArtifactFile(
-    newStoragePath,
-    await file.arrayBuffer()
-  );
+  const { error: uploadError } = await uploadArtifactFile(newStoragePath, fileBuffer);
   if (uploadError) return { error: `Upload failed: ${uploadError}` };
+
+  const lintWarnings = lintArtifactSource(new TextDecoder().decode(fileBuffer), fileExt);
 
   if (pathChanged) {
     const { error: dbError } = await updateArtifactStoragePath({
@@ -117,7 +118,11 @@ export async function replaceArtifactFile(
   }
 
   revalidatePath(`/artifact/${slug}`);
-  redirect(`/artifact/${slug}`);
+  redirect(
+    lintWarnings.length > 0
+      ? `/artifact/${slug}?warn=${lintWarnings.join(",")}`
+      : `/artifact/${slug}`
+  );
 }
 
 export async function deleteArtifactDetails(

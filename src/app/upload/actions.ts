@@ -8,6 +8,7 @@ import {
   insertArtifact,
   fetchArtifactsByOwner,
 } from "@/lib/supabase/artifacts";
+import { lintArtifactSource } from "@/lib/artifact-lint";
 
 function titleToSlug(title: string): string {
   return (
@@ -88,12 +89,12 @@ export async function uploadArtifact(
 
   const slug = titleToSlug(title);
   const storagePath = `${user.id}/${slug}${fileExt}`;
+  const fileBuffer = await file.arrayBuffer();
 
-  const { error: uploadError } = await uploadArtifactFile(
-    storagePath,
-    await file.arrayBuffer()
-  );
+  const { error: uploadError } = await uploadArtifactFile(storagePath, fileBuffer);
   if (uploadError) return { error: `Upload failed: ${uploadError}` };
+
+  const lintWarnings = lintArtifactSource(new TextDecoder().decode(fileBuffer), fileExt);
 
   const { error: insertError } = await insertArtifact({
     slug,
@@ -111,5 +112,9 @@ export async function uploadArtifact(
     return { error: `Database error: ${insertError}` };
   }
 
-  redirect(`/artifact/${slug}`);
+  redirect(
+    lintWarnings.length > 0
+      ? `/artifact/${slug}?warn=${lintWarnings.join(",")}`
+      : `/artifact/${slug}`
+  );
 }
