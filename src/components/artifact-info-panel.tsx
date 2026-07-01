@@ -11,23 +11,50 @@ function getAuthorLabel(artifact: Artifact): string {
   return artifact.author_username ?? "anonymous";
 }
 
+const LINT_WARNING_MESSAGES: Record<string, string> = {
+  "responsive-container":
+    "This artifact uses Recharts' ResponsiveContainer, which can crash on iOS Safari inside the artifact preview iframe (ResizeObserver can report a zero size or fail to settle). Consider a hand-rolled inline SVG chart, or pass explicit width/height instead of ResponsiveContainer.",
+};
+
 export function ArtifactInfoPanel({
   artifact,
   canEdit,
   currentUserId,
   userHasLiked,
+  lintWarnings = [],
 }: {
   artifact: Artifact;
   canEdit: boolean;
   currentUserId: string | null;
   userHasLiked: boolean;
+  lintWarnings?: string[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [dismissedWarnings, setDismissedWarnings] = useState<string[]>([]);
+
+  const visibleWarnings = lintWarnings.filter(
+    (w) => LINT_WARNING_MESSAGES[w] && !dismissedWarnings.includes(w)
+  );
 
   return (
     <section className="absolute inset-x-0 bottom-0 z-20 border-t border-neutral-200 bg-white/90 shadow-[0_-6px_24px_rgba(0,0,0,0.07)] backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-950/90">
       <div className="mx-auto max-w-5xl px-4">
+        {visibleWarnings.map((w) => (
+          <div
+            key={w}
+            className="flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-1 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300"
+          >
+            <span className="flex-1 leading-relaxed">{LINT_WARNING_MESSAGES[w]}</span>
+            <button
+              type="button"
+              onClick={() => setDismissedWarnings((prev) => [...prev, w])}
+              className="shrink-0 font-medium hover:underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        ))}
         <div className="flex min-h-12 items-center gap-3 py-1.5">
           <button
             type="button"

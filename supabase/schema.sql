@@ -100,6 +100,10 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
+-- Trigger functions fire regardless of caller privileges, so they never need
+-- to be directly callable as PostgREST RPCs. Revoke the default PUBLIC EXECUTE.
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+
 -- ─── Artifacts ───────────────────────────────────────────────────────────────
 
 create table if not exists public.artifacts (
@@ -265,7 +269,7 @@ do $$ begin
 end $$;
 
 create or replace function public.update_artifact_like_count()
-returns trigger set search_path = '' language plpgsql as $$
+returns trigger set search_path = '' language plpgsql security definer as $$
 begin
   if TG_OP = 'INSERT' then
     update public.artifacts set like_count = like_count + 1 where id = NEW.artifact_id;
@@ -280,18 +284,62 @@ create or replace trigger on_like_change
   after insert or delete on public.likes
   for each row execute procedure public.update_artifact_like_count();
 
+-- Trigger-only function: remove the default PUBLIC EXECUTE so it is not
+-- exposed as a callable PostgREST RPC.
+revoke execute on function public.update_artifact_like_count() from public, anon, authenticated;
+
+-- ─── Indexes ─────────────────────────────────────────────────────────────────
+
+create index if not exists artifacts_owner_created
+  on public.artifacts (owner_id, created_at desc);
+
+create index if not exists artifacts_like_count
+  on public.artifacts (like_count desc, created_at desc);
+
+create index if not exists artifacts_public_created
+  on public.artifacts (created_at desc)
+  where is_public = true;
+
+create index if not exists comments_artifact_id
+  on public.comments (artifact_id);
+
 -- ─── Storage ─────────────────────────────────────────────────────────────────
 
 insert into storage.buckets (id, name, public)
-  values ('artifacts', 'artifacts', true)
-  on conflict (id) do nothing;
+  values ('artifacts', 'artifacts', false)
+  on conflict (id) do update set public = false;
 
+-- Public artifact files are readable by anyone (joins to artifacts table)
 do $$ begin
   if not exists (
-    select 1 from pg_policies where tablename = 'objects' and policyname = 'Artifacts publicly readable'
+    select 1 from pg_policies where tablename = 'objects' and policyname = 'Public artifact files are readable'
   ) then
-    create policy "Artifacts publicly readable"
-      on storage.objects for select using (bucket_id = 'artifacts');
+    create policy "Public artifact files are readable"
+      on storage.objects for select
+      using (
+        bucket_id = 'artifacts' and
+        exists (
+          select 1 from public.artifacts a
+          where a.storage_path = name and a.is_public = true
+        )
+      );
+  end if;
+end $$;
+
+-- Private artifact files are readable only by their owner
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'objects' and policyname = 'Owners can read their artifact files'
+  ) then
+    create policy "Owners can read their artifact files"
+      on storage.objects for select to authenticated
+      using (
+        bucket_id = 'artifacts' and
+        exists (
+          select 1 from public.artifacts a
+          where a.storage_path = name and a.owner_id = (select auth.uid())
+        )
+      );
   end if;
 end $$;
 
@@ -301,7 +349,10 @@ do $$ begin
   ) then
     create policy "Authenticated users can upload"
       on storage.objects for insert to authenticated
-      with check (bucket_id = 'artifacts');
+      with check (
+        bucket_id = 'artifacts' and
+        name like ((select auth.uid())::text || '/%')
+      );
   end if;
 end $$;
 
@@ -314,3 +365,93 @@ do $$ begin
       using (bucket_id = 'artifacts' and owner_id = (select auth.uid())::text);
   end if;
 end $$;
+
+-- ─── Personal Access Tokens ───────────────────────────────────────────────────
+
+create table if not exists public.personal_access_tokens (
+  id           uuid default gen_random_uuid() primary key,
+  user_id      uuid references auth.users(id) on delete cascade not null,
+  name         text not null,
+  token_hash   text unique not null,
+  token_prefix text not null,
+  created_at   timestamptz default now() not null,
+  last_used_at timestamptz,
+  expires_at   timestamptz
+);
+
+alter table public.personal_access_tokens enable row level security;
+
+create index if not exists pat_user_created
+  on public.personal_access_tokens (user_id, created_at desc);
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'personal_access_tokens' and policyname = 'Users can view own tokens'
+  ) then
+    create policy "Users can view own tokens"
+      on public.personal_access_tokens for select
+      using ((select auth.uid()) = user_id);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'personal_access_tokens' and policyname = 'Users can insert own tokens'
+  ) then
+    create policy "Users can insert own tokens"
+      on public.personal_access_tokens for insert
+      with check ((select auth.uid()) = user_id);
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies where tablename = 'personal_access_tokens' and policyname = 'Users can delete own tokens'
+  ) then
+    create policy "Users can delete own tokens"
+      on public.personal_access_tokens for delete
+      using ((select auth.uid()) = user_id);
+  end if;
+end $$;
+
+-- ─── OAuth (Authorization Code flow for claude.ai connector) ─────────────────
+
+-- Registered OAuth clients (server-side only via service key)
+create table if not exists public.oauth_clients (
+  id                  text primary key,
+  secret_hash         text not null,
+  name                text not null,
+  redirect_uri_prefix text not null
+);
+
+-- Short-lived single-use authorization codes
+create table if not exists public.oauth_authorization_codes (
+  code            text primary key,
+  client_id       text not null references public.oauth_clients(id) on delete cascade,
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  redirect_uri    text not null,
+  expires_at      timestamptz not null,
+  used            boolean not null default false,
+  code_challenge  text
+);
+
+create index if not exists oauth_codes_expires
+  on public.oauth_authorization_codes (expires_at);
+
+-- These tables must never be reachable through the public anon/authenticated
+-- API. They hold OAuth client secrets and live authorization codes (which can
+-- be exchanged for access tokens). Enable RLS with NO policies so PostgREST
+-- denies all anon/authenticated access; the server reaches them only through
+-- the service-role key, which bypasses RLS.
+alter table public.oauth_clients enable row level security;
+alter table public.oauth_authorization_codes enable row level security;
+
+-- Register the claude.ai connector client (idempotent)
+insert into public.oauth_clients (id, secret_hash, name, redirect_uri_prefix)
+values (
+  'claude_artifacts_connector',
+  '9f75a7bc45cbfb5d3d3639385591cee606094b4380a5b61142b0833cefd83463',
+  'claude.ai Connector',
+  'https://claude.ai'
+)
+on conflict (id) do nothing;

@@ -12,18 +12,34 @@ export async function generateMetadata({
   const { slug } = await params;
   const artifact = await fetchArtifact(slug);
   if (!artifact) return {};
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3002";
+  const url = `${siteUrl}/artifact/${slug}`;
+  const description = artifact.description || undefined;
+
   return {
     title: `${artifact.title} | Claude Artifacts`,
-    description: artifact.description,
+    description,
+    keywords: artifact.tags.length > 0 ? artifact.tags : undefined,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "website",
+      url,
+      title: artifact.title,
+      description,
+    },
   };
 }
 
 export default async function ArtifactPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ warn?: string }>;
 }) {
   const { slug } = await params;
+  const { warn } = await searchParams;
   const artifact = await fetchArtifact(slug);
   if (!artifact) notFound();
 
@@ -33,6 +49,7 @@ export default async function ArtifactPage({
   } = await supabase.auth.getUser();
   const canEdit = user?.id === artifact.owner_id;
   const userLiked = user ? await hasUserLiked(artifact.id, user.id) : false;
+  const lintWarnings = canEdit ? (warn?.split(",").filter(Boolean) ?? []) : [];
 
   return (
     <main className="relative h-[calc(100dvh-3.5rem)] min-h-[calc(100dvh-3.5rem)] flex-1 overflow-hidden bg-white dark:bg-black">
@@ -45,6 +62,7 @@ export default async function ArtifactPage({
         canEdit={canEdit}
         currentUserId={user?.id ?? null}
         userHasLiked={userLiked}
+        lintWarnings={lintWarnings}
       />
     </main>
   );

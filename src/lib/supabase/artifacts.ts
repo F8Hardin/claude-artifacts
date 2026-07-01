@@ -3,15 +3,22 @@ import { Artifact } from "@/lib/artifacts";
 
 // ─── Storage ─────────────────────────────────────────────────────────────────
 
-export function getStorageUrl(storagePath: string): string {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/artifacts/${storagePath}`;
+export async function downloadArtifactFile(
+  storagePath: string
+): Promise<{ data: Blob | null; error: string | null }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage.from("artifacts").download(storagePath);
+  return { data, error: error?.message ?? null };
 }
 
 function contentTypeForPath(storagePath: string): string {
-  if (storagePath.endsWith(".jsx") || storagePath.endsWith(".js")) {
-    return "text/plain; charset=utf-8";
+  if (storagePath.endsWith(".html")) {
+    return "text/html; charset=utf-8";
   }
-  return "text/html; charset=utf-8";
+  // Everything else (.jsx, .js, .tsx, .ts, .svg, .md, .markdown, .mmd) is
+  // stored as plain text so direct storage URLs don't execute scripts —
+  // the preview routes apply the appropriate Content-Type when rendering.
+  return "text/plain; charset=utf-8";
 }
 
 export async function uploadArtifactFile(
@@ -182,29 +189,50 @@ export async function fetchArtifactsByOwner(ownerId: string): Promise<Artifact[]
 
 export async function searchArtifactRows(query: string): Promise<Artifact[]> {
   const supabase = await createClient();
-  const q = query.toLowerCase();
+  const q = `%${query}%`;
 
-  const { data, error } = await supabase
-    .from("artifacts")
-    .select("*")
-    .order("created_at", { ascending: false });
+  // Fetch title/description matches and tag matches separately, both server-side
+  const [titleRes, tagRes] = await Promise.all([
+    supabase
+      .from("artifacts")
+      .select("*")
+      .or(`title.ilike.${q},description.ilike.${q}`)
+      .eq("is_public", true)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("artifacts")
+      .select("*")
+      .contains("tags", [query.toLowerCase()])
+      .eq("is_public", true)
+      .order("created_at", { ascending: false })
+      .limit(50),
+  ]);
 
-  if (error) throw error;
+  if (titleRes.error) throw titleRes.error;
 
-  const all = data as ArtifactRow[];
-  const nameMatches = all.filter(
-    (r) =>
-      r.title.toLowerCase().includes(q) ||
-      r.description.toLowerCase().includes(q)
+  const titleRows = titleRes.data as ArtifactRow[];
+  const titleIds = new Set(titleRows.map((r) => r.id));
+
+  const tagRows = (tagRes.data as ArtifactRow[] ?? []).filter(
+    (r) => !titleIds.has(r.id)
   );
-  const nameMatchIds = new Set(nameMatches.map((r) => r.id));
-  const tagOnlyMatches = all.filter(
-    (r) => !nameMatchIds.has(r.id) && r.tags.some((t) => t.toLowerCase().includes(q))
-  );
 
-  const rows = [...nameMatches, ...tagOnlyMatches];
+  const rows = [...titleRows, ...tagRows];
   const profiles = await fetchProfiles([...new Set(rows.map((r) => r.owner_id))]);
   return rows.map((r) => toArtifact(r, profiles.get(r.owner_id)));
+}
+
+export async function fetchPublicArtifactsForSitemap(): Promise<
+  { slug: string; updated_at: string }[]
+> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("artifacts")
+    .select("slug, updated_at")
+    .eq("is_public", true)
+    .order("updated_at", { ascending: false });
+  return (data ?? []) as { slug: string; updated_at: string }[];
 }
 
 export async function fetchLikedArtifacts(userId: string): Promise<Artifact[]> {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { zipSync } from "fflate";
 import { createClient } from "@/lib/supabase/server";
-import { fetchArtifactsByOwner, getStorageUrl } from "@/lib/supabase/artifacts";
+import { fetchArtifactsByOwner, downloadArtifactFile } from "@/lib/supabase/artifacts";
 
 export async function GET() {
   const supabase = await createClient();
@@ -19,12 +19,15 @@ export async function GET() {
     return new NextResponse("No artifacts to download", { status: 404 });
   }
 
+  if (artifacts.length > 200) {
+    return new NextResponse("Too many artifacts to download at once", { status: 413 });
+  }
+
   const fileEntries = await Promise.all(
     artifacts.map(async (artifact) => {
-      const url = getStorageUrl(artifact.storage_path);
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      const buf = await res.arrayBuffer();
+      const { data: fileBlob } = await downloadArtifactFile(artifact.storage_path);
+      if (!fileBlob) return null;
+      const buf = await fileBlob.arrayBuffer();
       const ext = artifact.storage_path.slice(artifact.storage_path.lastIndexOf("."));
       const filename = `${artifact.slug}${ext}`;
       return [filename, new Uint8Array(buf)] as [string, Uint8Array];

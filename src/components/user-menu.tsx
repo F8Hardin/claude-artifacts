@@ -50,6 +50,13 @@ export function UserMenu() {
           >
             Liked artifacts
           </Link>
+          <Link
+            href="/personal-access-tokens"
+            onClick={() => setOpen(false)}
+            className="block px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-900"
+          >
+            My Personal Access Tokens
+          </Link>
         </div>
       )}
     </div>

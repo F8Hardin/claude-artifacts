@@ -1,22 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { uploadArtifact } from "./actions";
+import type { DragEvent, ChangeEvent } from "react";
 
 function CompatibilityGuide() {
   const [open, setOpen] = useState(false);
 
-  const promptText = `Make this artifact compatible with a browser-based JSX preview that has:
+  const promptText = `Make this artifact compatible with a browser-based JSX/TSX preview that has:
 - React 18 (loaded as UMD global — do NOT import React, just use hooks directly)
+- TypeScript/TSX is supported (type annotations, interfaces, generics are stripped before running)
 - Tailwind CSS (via CDN — all utility classes available)
-- Recharts 2.5 (loaded as UMD global)
-- No other npm packages available (no axios, no framer-motion, no date-fns, etc.)
-- lucide-react icons render as generic placeholders — replace with inline SVGs or emoji
+- Recharts 2.5 (loaded as UMD global) — but avoid ResponsiveContainer, see warning below
+- d3 7 and framer-motion 11 (loaded as UMD globals)
+- lucide-react icons render with real icon shapes for common icons (X, Check, ChevronDown/Up/Left/Right, Search, Menu, Plus, Minus, Trash2, Edit, Settings, User, Heart, Star, ArrowRight/Left, Download, Upload, Copy, ExternalLink, Info, AlertCircle, CheckCircle, XCircle, Calendar, Clock, Mail, Lock, Eye, EyeOff, Loader2); other icon names fall back to a generic placeholder shape
+- No other npm packages available (no axios, no date-fns, etc.)
 - No Node.js APIs (no fs, no process, no fetch to relative paths)
 - No Next.js features (no next/link, no next/router, no server components)
 - Must export default a single function component
 - All state, logic, and UI must be in one file
 - Use standard browser APIs (fetch to absolute URLs is fine)
+
+Recharts ResponsiveContainer warning: ResponsiveContainer relies on ResizeObserver to measure its parent. Inside the sandboxed/cross-origin preview iframe, iOS Safari's ResizeObserver can report a zero size or fail to settle, and Recharts throws during the commit phase instead of degrading gracefully — this crashes the whole component with an undebuggable "Script error." Avoid ResponsiveContainer entirely. Prefer either a hand-rolled inline SVG chart with a fixed viewBox and width: 100% CSS scaling (no resize observation at all), or Recharts components given an explicit fixed width/height prop instead of ResponsiveContainer. Also avoid scale="log" on axes without an explicit, strictly-positive domain — log scales with an auto domain can resolve toward 0, producing NaN in the rendered path.
 
 Please rewrite the artifact to follow these constraints. Replace any unavailable libraries with inline implementations or remove them.`;
 
@@ -27,7 +33,7 @@ Please rewrite the artifact to follow these constraints. Replace any unavailable
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800/50 rounded-lg transition-colors"
       >
-        <span>Compatibility Guide for JSX/JS Artifacts</span>
+        <span>Compatibility Guide for Artifacts</span>
         <span className="text-neutral-400">{open ? "▲" : "▼"}</span>
       </button>
 
@@ -35,12 +41,15 @@ Please rewrite the artifact to follow these constraints. Replace any unavailable
         <div className="px-4 pb-4 space-y-4 text-sm text-neutral-600 dark:text-neutral-300">
           <div>
             <h4 className="font-medium text-neutral-800 dark:text-neutral-100 mb-2">
-              Available in the preview environment:
+              Available in the JSX/TSX preview environment:
             </h4>
             <ul className="list-disc list-inside space-y-1 text-xs">
               <li><strong>React 18</strong> — hooks, JSX, all standard APIs</li>
+              <li><strong>TypeScript/TSX</strong> — types are stripped before running</li>
               <li><strong>Tailwind CSS</strong> — all utility classes</li>
-              <li><strong>Recharts 2.5</strong> — charts and data visualization</li>
+              <li><strong>Recharts 2.5</strong> — charts and data visualization (avoid <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">ResponsiveContainer</code>, see Known Issues below)</li>
+              <li><strong>d3 7</strong> and <strong>framer-motion 11</strong> — loaded as UMD globals</li>
+              <li><strong>lucide-react</strong> — common icons render as real shapes; uncommon icons fall back to a placeholder</li>
             </ul>
           </div>
 
@@ -49,8 +58,7 @@ Please rewrite the artifact to follow these constraints. Replace any unavailable
               Not available:
             </h4>
             <ul className="list-disc list-inside space-y-1 text-xs">
-              <li>Other npm packages (axios, framer-motion, date-fns, etc.)</li>
-              <li>lucide-react icons (imports won&apos;t error but render as generic circles)</li>
+              <li>Other npm packages (axios, date-fns, etc.)</li>
               <li>Node.js / Next.js APIs</li>
               <li>Relative fetch paths or server-side logic</li>
             </ul>
@@ -63,8 +71,33 @@ Please rewrite the artifact to follow these constraints. Replace any unavailable
             <ul className="list-disc list-inside space-y-1 text-xs">
               <li>Must <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">export default</code> a single function component</li>
               <li>Everything in one file — no multi-file imports</li>
-              <li>Use inline SVGs or emoji instead of icon libraries</li>
               <li>Use browser <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">fetch()</code> with absolute URLs if needed</li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-medium text-neutral-800 dark:text-neutral-100 mb-2">
+              Known issues:
+            </h4>
+            <ul className="list-disc list-inside space-y-1 text-xs">
+              <li>
+                <strong>Recharts <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">ResponsiveContainer</code></strong> can crash on iOS Safari inside the preview iframe — its <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">ResizeObserver</code> can report a zero size or fail to settle. Use a hand-rolled inline SVG chart with a fixed <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">viewBox</code>, or pass explicit <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">width</code>/<code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">height</code> instead.
+              </li>
+              <li>
+                Avoid <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">scale=&quot;log&quot;</code> on axes without an explicit, strictly-positive <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">domain</code> — an auto domain can resolve toward 0 and produce <code className="bg-neutral-200 dark:bg-neutral-700 px-1 rounded">NaN</code> in the rendered path.
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-medium text-neutral-800 dark:text-neutral-100 mb-2">
+              Other supported formats:
+            </h4>
+            <ul className="list-disc list-inside space-y-1 text-xs">
+              <li><strong>.html</strong> — rendered as-is</li>
+              <li><strong>.svg</strong> — rendered as an image</li>
+              <li><strong>.md</strong> / <strong>.markdown</strong> — rendered as styled, formatted text</li>
+              <li><strong>.mmd</strong> — rendered as a Mermaid diagram</li>
             </ul>
           </div>
 
@@ -95,22 +128,53 @@ Please rewrite the artifact to follow these constraints. Replace any unavailable
 }
 
 export function UploadForm() {
+  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const submitting = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
     setError(null);
     setPending(true);
+    const formData = new FormData(e.currentTarget);
+    if (selectedFile) formData.set("file", selectedFile);
     const result = await uploadArtifact(formData);
     if (result?.error) {
       setError(result.error);
       setPending(false);
+      submitting.current = false;
     }
-    // On success, uploadArtifact calls redirect() — no explicit handling needed
+  }
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    setSelectedFile(e.target.files?.[0] ?? null);
+  }
+
+  function handleDragOver(e: DragEvent) {
+    e.preventDefault();
+    setDragOver(true);
+  }
+
+  function handleDragLeave(e: DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+  }
+
+  function handleDrop(e: DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) setSelectedFile(file);
   }
 
   return (
-    <form action={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {/* Title */}
       <div>
         <label className="block text-sm font-medium mb-1.5" htmlFor="title">
@@ -158,17 +222,39 @@ export function UploadForm() {
 
       {/* File */}
       <div>
-        <label className="block text-sm font-medium mb-1.5" htmlFor="file">
+        <label className="block text-sm font-medium mb-1.5">
           Artifact File{" "}
-          <span className="font-normal text-neutral-400">(.html, .jsx, .js — max 5 MB)</span>
+          <span className="font-normal text-neutral-400">(.html, .jsx, .js, .tsx, .ts, .svg, .md, .mmd — max 5 MB)</span>
         </label>
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={`w-full rounded-lg border-2 border-dashed px-4 py-6 text-center cursor-pointer transition-colors ${
+            dragOver
+              ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+              : "border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500"
+          }`}
+        >
+          {selectedFile ? (
+            <span className="text-sm text-neutral-700 dark:text-neutral-200 font-medium">
+              {selectedFile.name}
+            </span>
+          ) : (
+            <span className="text-sm text-neutral-400">
+              Drop file here or <span className="text-blue-500 underline">tap to browse</span>
+            </span>
+          )}
+        </div>
+        {/* No accept filter: iOS greys out .jsx in the picker because it has
+            no registered UTI. The server validates by extension, so we let
+            all files be selectable and reject invalid ones server-side. */}
         <input
-          id="file"
-          name="file"
+          ref={fileInputRef}
           type="file"
-          accept=".html,.jsx,.js,text/html,application/javascript"
-          required
-          className="w-full text-sm text-neutral-600 dark:text-neutral-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-neutral-100 dark:file:bg-neutral-800 file:text-sm file:font-medium cursor-pointer"
+          onChange={handleFileChange}
+          className="hidden"
         />
       </div>
 
@@ -240,13 +326,29 @@ export function UploadForm() {
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-      >
-        {pending ? "Uploading…" : "Upload Artifact"}
-      </button>
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          disabled={pending}
+          className="flex-1 py-2.5 rounded-lg border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-50 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={pending}
+          className="flex-1 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        >
+          {pending && (
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
+          )}
+          {pending ? "Uploading…" : "Upload Artifact"}
+        </button>
+      </div>
     </form>
   );
 }

@@ -6,7 +6,9 @@ import {
   uploadArtifactFile,
   deleteArtifactFile,
   insertArtifact,
+  fetchArtifactsByOwner,
 } from "@/lib/supabase/artifacts";
+import { lintArtifactSource } from "@/lib/artifact-lint";
 
 function titleToSlug(title: string): string {
   return (
@@ -41,27 +43,58 @@ export async function uploadArtifact(
   const agreedToTerms = formData.get("agree_terms") === "true";
   const file = formData.get("file") as File | null;
 
-  const allowedExtensions = [".html", ".jsx", ".js"];
+  const allowedExtensions = [".html", ".jsx", ".js", ".tsx", ".ts", ".svg", ".md", ".markdown", ".mmd"];
   const fileExt = allowedExtensions.find((ext) => file?.name.endsWith(ext));
 
+  const allowedMimes = [
+    "text/html",
+    "text/javascript",
+    "application/javascript",
+    "text/plain",
+    "text/jsx",
+    "image/svg+xml",
+    "text/markdown",
+    "text/x-typescript",
+    "application/typescript",
+    "text/mermaid",
+    "",  // some browsers omit MIME for unknown types
+  ];
+
   if (!title) return { error: "Title is required." };
+  if (title.length > 100) return { error: "Title must be 100 characters or fewer." };
   if (!file || file.size === 0) return { error: "Artifact file is required." };
-  if (!fileExt) return { error: "Only .html, .jsx, or .js files are allowed." };
+  // Validate by extension only. Browser-supplied MIME types are unreliable
+  // (iOS assigns .jsx files application/octet-stream), so MIME checks cause
+  // false rejections without adding real security.
+  if (!fileExt) return { error: "Only .html, .jsx, .js, .tsx, .ts, .svg, .md, .markdown, or .mmd files are allowed." };
+  if (file.type && !allowedMimes.includes(file.type.split(";")[0].trim())) {
+    return { error: "Invalid file type." };
+  }
   if (file.size > 5 * 1024 * 1024) return { error: "File must be under 5 MB." };
   if (!agreedToTerms) return { error: "You must confirm you have rights to share this content." };
 
+  const existingArtifacts = await fetchArtifactsByOwner(user.id);
+  if (existingArtifacts.length >= 100) {
+    return { error: "Upload limit reached (100 artifacts maximum). Delete some artifacts to upload more." };
+  }
+
   const tags = tagsRaw
-    ? tagsRaw.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean)
+    ? tagsRaw
+        .split(",")
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean)
+        .slice(0, 10)
+        .map((t) => t.slice(0, 30))
     : [];
 
   const slug = titleToSlug(title);
-  const storagePath = `${slug}${fileExt}`;
+  const storagePath = `${user.id}/${slug}${fileExt}`;
+  const fileBuffer = await file.arrayBuffer();
 
-  const { error: uploadError } = await uploadArtifactFile(
-    storagePath,
-    await file.arrayBuffer()
-  );
+  const { error: uploadError } = await uploadArtifactFile(storagePath, fileBuffer);
   if (uploadError) return { error: `Upload failed: ${uploadError}` };
+
+  const lintWarnings = lintArtifactSource(new TextDecoder().decode(fileBuffer), fileExt);
 
   const { error: insertError } = await insertArtifact({
     slug,
@@ -79,5 +112,9 @@ export async function uploadArtifact(
     return { error: `Database error: ${insertError}` };
   }
 
-  redirect(`/artifact/${slug}`);
+  redirect(
+    lintWarnings.length > 0
+      ? `/artifact/${slug}?warn=${lintWarnings.join(",")}`
+      : `/artifact/${slug}`
+  );
 }

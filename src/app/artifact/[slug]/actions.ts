@@ -12,6 +12,7 @@ import {
   uploadArtifactFile,
   updateArtifactStoragePath,
 } from "@/lib/supabase/artifacts";
+import { lintArtifactSource } from "@/lib/artifact-lint";
 
 function parseTags(tagsRaw: string): string[] {
   return [
@@ -88,24 +89,24 @@ export async function replaceArtifactFile(
   const { artifact, user } = ownership;
   const file = formData.get("file") as File | null;
 
-  const allowedExtensions = [".html", ".jsx", ".js"];
+  const allowedExtensions = [".html", ".jsx", ".js", ".tsx", ".ts", ".svg", ".md", ".markdown", ".mmd"];
   const fileExt = allowedExtensions.find((ext) => file?.name.endsWith(ext));
 
   if (!file || file.size === 0) return { error: "File is required." };
-  if (!fileExt) return { error: "Only .html, .jsx, or .js files are allowed." };
+  if (!fileExt) return { error: "Only .html, .jsx, .js, .tsx, .ts, .svg, .md, .markdown, or .mmd files are allowed." };
   if (file.size > 5 * 1024 * 1024) return { error: "File must be under 5 MB." };
 
-  const newStoragePath = `${slug}${fileExt}`;
+  const newStoragePath = `${user.id}/${slug}${fileExt}`;
   const pathChanged = artifact.storage_path !== newStoragePath;
+  const fileBuffer = await file.arrayBuffer();
 
   // Delete old file first, then upload new (avoids needing storage UPDATE policy)
   await deleteArtifactFile(artifact.storage_path);
 
-  const { error: uploadError } = await uploadArtifactFile(
-    newStoragePath,
-    await file.arrayBuffer()
-  );
+  const { error: uploadError } = await uploadArtifactFile(newStoragePath, fileBuffer);
   if (uploadError) return { error: `Upload failed: ${uploadError}` };
+
+  const lintWarnings = lintArtifactSource(new TextDecoder().decode(fileBuffer), fileExt);
 
   if (pathChanged) {
     const { error: dbError } = await updateArtifactStoragePath({
@@ -117,7 +118,11 @@ export async function replaceArtifactFile(
   }
 
   revalidatePath(`/artifact/${slug}`);
-  redirect(`/artifact/${slug}`);
+  redirect(
+    lintWarnings.length > 0
+      ? `/artifact/${slug}?warn=${lintWarnings.join(",")}`
+      : `/artifact/${slug}`
+  );
 }
 
 export async function deleteArtifactDetails(
