@@ -59,6 +59,13 @@ function contentTypeForExt(ext: string): string {
     : "text/plain; charset=utf-8";
 }
 
+// PostgREST parses commas and parentheses inside .or() filter strings, and
+// % / _ are SQL LIKE wildcards. Strip them so untrusted search text cannot
+// inject extra filter conditions or wildcards into an ilike pattern.
+function sanitizeIlikeTerm(query: string): string {
+  return query.replace(/[,()%_*\\]/g, " ").replace(/\s+/g, " ").trim();
+}
+
 const REACT_SOURCE_EXTENSIONS = new Set([".jsx", ".js", ".tsx", ".ts"]);
 
 // Non-blocking static check — never rejects an upload, only warns. Recharts'
@@ -429,17 +436,22 @@ async function toolSearch(args: Record<string, unknown>) {
   const query = String(args.query ?? "").trim();
   if (!query) return { error: "query is required" };
   const limit = Math.min(Number(args.limit ?? 20), 50);
-  const q = `%${query}%`;
+  const safe = sanitizeIlikeTerm(query);
+  const q = `%${safe}%`;
 
   const sb = createClient(SUPABASE_URL, SERVICE_KEY);
   const [titleRes, tagRes] = await Promise.all([
-    sb
-      .from("artifacts")
-      .select("slug, title, description, tags, like_count")
-      .or(`title.ilike.${q},description.ilike.${q}`)
-      .eq("is_public", true)
-      .order("like_count", { ascending: false })
-      .limit(limit),
+    // Skip the ilike branch entirely if sanitizing left nothing, so a query of
+    // only punctuation can't become "%%" and match every public artifact.
+    safe
+      ? sb
+          .from("artifacts")
+          .select("slug, title, description, tags, like_count")
+          .or(`title.ilike.${q},description.ilike.${q}`)
+          .eq("is_public", true)
+          .order("like_count", { ascending: false })
+          .limit(limit)
+      : Promise.resolve({ data: [], error: null }),
     sb
       .from("artifacts")
       .select("slug, title, description, tags, like_count")

@@ -187,19 +187,31 @@ export async function fetchArtifactsByOwner(ownerId: string): Promise<Artifact[]
   return rows.map((row) => toArtifact(row, profiles.get(row.owner_id)));
 }
 
+// PostgREST parses commas and parentheses inside .or() filter strings, and
+// % / _ are SQL LIKE wildcards. Strip them so untrusted search text cannot
+// inject extra filter conditions or wildcards into an ilike pattern.
+function sanitizeIlikeTerm(query: string): string {
+  return query.replace(/[,()%_*\\]/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export async function searchArtifactRows(query: string): Promise<Artifact[]> {
   const supabase = await createClient();
-  const q = `%${query}%`;
+  const safe = sanitizeIlikeTerm(query);
+  const q = `%${safe}%`;
 
-  // Fetch title/description matches and tag matches separately, both server-side
+  // Fetch title/description matches and tag matches separately, both server-side.
+  // Skip the ilike branch if sanitizing left nothing, so a punctuation-only
+  // query can't become "%%" and match every public artifact.
   const [titleRes, tagRes] = await Promise.all([
-    supabase
-      .from("artifacts")
-      .select("*")
-      .or(`title.ilike.${q},description.ilike.${q}`)
-      .eq("is_public", true)
-      .order("created_at", { ascending: false })
-      .limit(50),
+    safe
+      ? supabase
+          .from("artifacts")
+          .select("*")
+          .or(`title.ilike.${q},description.ilike.${q}`)
+          .eq("is_public", true)
+          .order("created_at", { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: [], error: null }),
     supabase
       .from("artifacts")
       .select("*")
