@@ -254,7 +254,12 @@ function escapeForTemplateLiteral(source: string): string {
   return source
     .replace(/\\/g, "\\\\")
     .replace(/`/g, "\\`")
-    .replace(/\$\{/g, "\\${");
+    .replace(/\$\{/g, "\\${")
+    // Prevent the HTML parser from closing the enclosing <script> early on a
+    // literal "</..." (e.g. "</script>") in the source. Escaping the slash as
+    // "<\/" is invisible to JS (the string value is unchanged, so marked.parse
+    // still sees the original text) but stops the tokenizer from breaking out.
+    .replace(/<\//g, "<\\/");
 }
 
 // Escapes a string for safe embedding as HTML text content.
