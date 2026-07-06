@@ -402,6 +402,62 @@ do $$ begin
   end if;
 end $$;
 
+-- ─── Rate limiting ────────────────────────────────────────────────────────────
+-- Atomic fixed-window counter shared by the web server actions and the MCP edge
+-- function (both call it with the service-role key). Keys are built from a
+-- trusted identity (authenticated user id, or client IP for anonymous calls),
+-- so callers cannot spend each other's budget.
+
+create table if not exists public.rate_limits (
+  key          text primary key,
+  count        int not null default 0,
+  window_start timestamptz not null default now()
+);
+
+-- Only the service role touches this table; enable RLS with no policies so the
+-- anon/authenticated PostgREST API can never read or write it.
+alter table public.rate_limits enable row level security;
+
+-- Returns true if the request is within the limit. A single upsert keeps the
+-- increment atomic under concurrency; the window resets once it has elapsed.
+create or replace function public.rate_limit_hit(
+  p_key text,
+  p_max int,
+  p_window_seconds int
+) returns boolean
+  set search_path = ''
+  language plpgsql
+  security definer
+as $$
+declare
+  v_now   timestamptz := now();
+  v_count int;
+begin
+  insert into public.rate_limits as rl (key, count, window_start)
+    values (p_key, 1, v_now)
+  on conflict (key) do update
+    set count = case
+          when rl.window_start < v_now - make_interval(secs => p_window_seconds)
+          then 1
+          else rl.count + 1
+        end,
+        window_start = case
+          when rl.window_start < v_now - make_interval(secs => p_window_seconds)
+          then v_now
+          else rl.window_start
+        end
+  returning rl.count into v_count;
+  return v_count <= p_max;
+end;
+$$;
+
+-- Callable only with the service-role key (which bypasses RLS). Revoke the
+-- default PUBLIC EXECUTE so anon/authenticated users can't spend other users'
+-- budgets by passing a forged key.
+revoke execute on function public.rate_limit_hit(text, int, int)
+  from public, anon, authenticated;
+grant execute on function public.rate_limit_hit(text, int, int) to service_role;
+
 -- ─── Personal Access Tokens ───────────────────────────────────────────────────
 
 create table if not exists public.personal_access_tokens (

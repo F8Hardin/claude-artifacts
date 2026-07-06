@@ -656,6 +656,56 @@ function rpcErr(id: unknown, code: number, message: string): Response {
   return Response.json({ jsonrpc: "2.0", id, error: { code, message } });
 }
 
+// ─── Rate limiting ──────────────────────────────────────────────────────────
+
+function clientIp(req: Request): string {
+  const fwd = req.headers.get("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0].trim();
+  return req.headers.get("x-real-ip") ?? "unknown";
+}
+
+// Returns true if the request is within the limit. Fails OPEN — a limiter error
+// must not take down the API — so this is a throttle, not an auth control.
+async function checkRateLimit(
+  sb: ReturnType<typeof createClient>,
+  key: string,
+  max: number,
+  windowSeconds: number
+): Promise<boolean> {
+  const { data, error } = await sb.rpc("rate_limit_hit", {
+    p_key: key,
+    p_max: max,
+    p_window_seconds: windowSeconds,
+  });
+  if (error) return true;
+  return data === true;
+}
+
+function rateLimited(id: unknown): Response {
+  return ok(id, {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          error: "Rate limit exceeded. Please slow down and try again shortly.",
+        }),
+      },
+    ],
+  });
+}
+
+const PUBLIC_TOOL_NAMES = new Set([
+  "search_artifacts",
+  "get_top_artifacts",
+  "get_artifact_content",
+  "get_artifact_setup_guide",
+]);
+const WRITE_TOOL_NAMES = new Set([
+  "upload_artifact",
+  "update_artifact",
+  "delete_artifact",
+]);
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -732,6 +782,15 @@ Deno.serve(async (req: Request) => {
     };
     const args = p.arguments ?? {};
 
+    const rlSb = createClient(SUPABASE_URL, SERVICE_KEY);
+
+    // Public tools are unauthenticated, so throttle per client IP.
+    if (PUBLIC_TOOL_NAMES.has(p.name)) {
+      if (!(await checkRateLimit(rlSb, `mcp:pub:${clientIp(req)}`, 120, 60))) {
+        return rateLimited(id);
+      }
+    }
+
     // Public tools — no auth required
     if (p.name === "search_artifacts") {
       const result = await toolSearch(args);
@@ -774,6 +833,17 @@ Deno.serve(async (req: Request) => {
           },
         }
       );
+    }
+
+    // Per-user throttle: a general budget for all authed calls plus a stricter
+    // budget for writes (upload/update/delete), which are the abuse-prone ones.
+    if (!(await checkRateLimit(rlSb, `mcp:user:${userId}`, 300, 60))) {
+      return rateLimited(id);
+    }
+    if (WRITE_TOOL_NAMES.has(p.name)) {
+      if (!(await checkRateLimit(rlSb, `mcp:write:${userId}`, 40, 3600))) {
+        return rateLimited(id);
+      }
     }
 
     let result: unknown;

@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import {
   uploadArtifactFile,
   deleteArtifactFile,
@@ -77,6 +77,18 @@ export async function uploadArtifact(
   const existingArtifacts = await fetchArtifactsByOwner(user.id);
   if (existingArtifacts.length >= 100) {
     return { error: "Upload limit reached (100 artifacts maximum). Delete some artifacts to upload more." };
+  }
+
+  // Throttle uploads per user (shared budget with the MCP write tools). Fails
+  // open on limiter errors so a transient DB issue can't block legitimate use.
+  const admin = createAdminClient();
+  const { data: allowed, error: rlError } = await admin.rpc("rate_limit_hit", {
+    p_key: `mcp:write:${user.id}`,
+    p_max: 40,
+    p_window_seconds: 3600,
+  });
+  if (!rlError && allowed === false) {
+    return { error: "You're uploading too fast. Please wait a bit and try again." };
   }
 
   const tags = tagsRaw
