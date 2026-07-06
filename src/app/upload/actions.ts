@@ -9,6 +9,7 @@ import {
   fetchArtifactsByOwner,
 } from "@/lib/supabase/artifacts";
 import { lintArtifactSource } from "@/lib/artifact-lint";
+import { moderateArtifact } from "@/lib/moderation";
 
 function titleToSlug(title: string): string {
   return (
@@ -94,7 +95,13 @@ export async function uploadArtifact(
   const { error: uploadError } = await uploadArtifactFile(storagePath, fileBuffer);
   if (uploadError) return { error: `Upload failed: ${uploadError}` };
 
-  const lintWarnings = lintArtifactSource(new TextDecoder().decode(fileBuffer), fileExt);
+  const source = new TextDecoder().decode(fileBuffer);
+  const lintWarnings = lintArtifactSource(source, fileExt);
+
+  // Screen before publishing. The DB trigger enforces the invariant, but we
+  // also compute is_public here so the intent is explicit: public only when
+  // the uploader asked for it AND the classifier approved.
+  const moderation = await moderateArtifact({ title, description, content: source });
 
   const { error: insertError } = await insertArtifact({
     slug,
@@ -103,8 +110,9 @@ export async function uploadArtifact(
     owner_id: user.id,
     storage_path: storagePath,
     tags,
-    is_public: isPublic,
+    is_public: isPublic && moderation.status === "approved",
     author_name_visible: authorNameVisible,
+    moderation_status: moderation.status,
   });
 
   if (insertError) {
@@ -112,9 +120,9 @@ export async function uploadArtifact(
     return { error: `Database error: ${insertError}` };
   }
 
-  redirect(
-    lintWarnings.length > 0
-      ? `/artifact/${slug}?warn=${lintWarnings.join(",")}`
-      : `/artifact/${slug}`
-  );
+  const params = new URLSearchParams();
+  if (lintWarnings.length > 0) params.set("warn", lintWarnings.join(","));
+  if (moderation.status !== "approved") params.set("review", moderation.status);
+  const qs = params.toString();
+  redirect(`/artifact/${slug}${qs ? `?${qs}` : ""}`);
 }

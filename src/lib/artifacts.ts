@@ -14,4 +14,5 @@ export interface Artifact {
   author_username: string | null;
   author_avatar: string | null;
   like_count: number;
+  moderation_status: "approved" | "rejected" | "pending";
 }

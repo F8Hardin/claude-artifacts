@@ -83,6 +83,63 @@ function lintArtifactSource(content: string, ext: string): string[] {
   return [];
 }
 
+// ─── Moderation ───────────────────────────────────────────────────────────────
+// Mirrors src/lib/moderation.ts. Screens artifacts with a hosted classifier
+// before they can be made public. Returns "pending" (fail-safe: stays private)
+// whenever the classifier can't run, so a missing key never leaks content.
+
+async function moderateContent(input: {
+  title?: string;
+  description?: string;
+  content?: string;
+}): Promise<{ status: "approved" | "rejected" | "pending"; flagged: string[] }> {
+  const apiKey =
+    Deno.env.get("MODERATION_API_KEY") ?? Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey) return { status: "pending", flagged: [] };
+
+  const text = [input.title, input.description, input.content]
+    .filter((s): s is string => Boolean(s && s.trim()))
+    .join("\n\n")
+    .slice(0, 50_000);
+  if (!text) return { status: "approved", flagged: [] };
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/moderations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ model: "omni-moderation-latest", input: text }),
+    });
+    if (!res.ok) return { status: "pending", flagged: [] };
+    const data = await res.json();
+    const result = data?.results?.[0];
+    if (!result) return { status: "pending", flagged: [] };
+    if (result.flagged) {
+      const flagged = Object.entries(result.categories ?? {})
+        .filter(([, v]) => v === true)
+        .map(([k]) => k);
+      return { status: "rejected", flagged };
+    }
+    return { status: "approved", flagged: [] };
+  } catch {
+    return { status: "pending", flagged: [] };
+  }
+}
+
+function moderationNotice(
+  status: "approved" | "rejected" | "pending",
+  flagged: string[]
+): string | undefined {
+  if (status === "approved") return undefined;
+  if (status === "rejected") {
+    const cats = flagged.length > 0 ? ` (${flagged.join(", ")})` : "";
+    return `Stored privately: automated content review flagged this artifact${cats}, so it cannot be made public.`;
+  }
+  return "Stored privately: automated content review is unavailable, so this artifact stays private until it can be cleared.";
+}
+
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 
 const TOOLS = [
@@ -97,7 +154,10 @@ const TOOLS = [
       "IMPORTANT: You must set `claude_created` to true only when YOU (Claude) wrote or directly generated " +
       "the artifact content in this conversation. Do not set it to true for content you did not create. " +
       "The response may include a `warnings` array for non-fatal issues detected in the source (e.g. " +
-      "Recharts ResponsiveContainer usage) — the upload still succeeds, but you should fix and re-upload.",
+      "Recharts ResponsiveContainer usage) — the upload still succeeds, but you should fix and re-upload. " +
+      "Uploaded content is screened by automated moderation: the artifact is stored privately and only " +
+      "becomes public once it passes review. The response includes `moderation_status` (approved/pending/" +
+      "rejected) and, when not approved, a `notice` explaining why it is still private.",
     inputSchema: {
       type: "object",
       properties: {
@@ -312,6 +372,10 @@ async function toolUpload(userId: string, args: Record<string, unknown>) {
     });
   if (upErr) return { error: `Storage failed: ${upErr.message}` };
 
+  // Screen before publishing. is_public can only be true once approved; the DB
+  // trigger enforces this too, but we set it explicitly for clarity.
+  const moderation = await moderateContent({ title, description, content });
+
   const { error: insErr } = await sb.from("artifacts").insert({
     slug,
     title,
@@ -319,17 +383,21 @@ async function toolUpload(userId: string, args: Record<string, unknown>) {
     owner_id: userId,
     storage_path: storagePath,
     tags,
-    is_public: isPublic,
+    is_public: isPublic && moderation.status === "approved",
     author_name_visible: showName,
+    moderation_status: moderation.status,
   });
   if (insErr) {
     await sb.storage.from("artifacts").remove([storagePath]);
     return { error: `DB insert failed: ${insErr.message}` };
   }
   const warnings = lintArtifactSource(content, extension);
+  const notice = moderationNotice(moderation.status, moderation.flagged);
   return {
     slug,
     url: `${SITE_URL}/artifact/${slug}`,
+    moderation_status: moderation.status,
+    ...(notice ? { notice } : {}),
     ...(warnings.length > 0 ? { warnings } : {}),
   };
 }
@@ -363,8 +431,16 @@ async function toolUpdate(userId: string, args: Record<string, unknown>) {
     .single();
   if (fetchErr || !existing) return { error: "Artifact not found" };
 
+  const newTitle = args.title !== undefined ? String(args.title) : existing.title;
+  const newDescription =
+    args.description !== undefined
+      ? String(args.description)
+      : existing.description;
+  const contentChanged =
+    typeof args.content === "string" && args.content.length > 0;
+
   let warnings: string[] = [];
-  if (typeof args.content === "string" && args.content.length > 0) {
+  if (contentChanged) {
     const ext = existing.storage_path.match(/\.[^.]+$/)?.[0] ?? ".html";
     const contentType = contentTypeForExt(ext);
     const { error: upErr } = await sb.storage
@@ -378,6 +454,31 @@ async function toolUpdate(userId: string, args: Record<string, unknown>) {
     warnings = lintArtifactSource(args.content as string, ext);
   }
 
+  // Re-screen on any change. Content changes carry a "pending" result through
+  // (unscreened content stays private); metadata-only changes leave the status
+  // untouched when the classifier is unavailable so an approved artifact isn't
+  // forced private by a title tweak.
+  const metadataChanged =
+    args.title !== undefined || args.description !== undefined;
+  let moderationStatus: "approved" | "rejected" | "pending" | undefined;
+  let moderationFlagged: string[] = [];
+  if (contentChanged) {
+    const mod = await moderateContent({
+      title: newTitle,
+      description: newDescription,
+      content: args.content as string,
+    });
+    moderationStatus = mod.status;
+    moderationFlagged = mod.flagged;
+  } else if (metadataChanged) {
+    const mod = await moderateContent({
+      title: newTitle,
+      description: newDescription,
+    });
+    moderationFlagged = mod.flagged;
+    moderationStatus = mod.status === "pending" ? undefined : mod.status;
+  }
+
   const tags = args.tags
     ? (Array.isArray(args.tags) ? args.tags : [])
         .map((t) => String(t).trim().toLowerCase())
@@ -389,20 +490,26 @@ async function toolUpdate(userId: string, args: Record<string, unknown>) {
   const { error: updErr } = await sb
     .from("artifacts")
     .update({
-      title: args.title ?? existing.title,
-      description: args.description ?? existing.description,
+      title: newTitle,
+      description: newDescription,
       tags,
       is_public: args.is_public ?? existing.is_public,
       author_name_visible: args.show_name ?? existing.author_name_visible,
+      ...(moderationStatus ? { moderation_status: moderationStatus } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("slug", slug)
     .eq("owner_id", userId);
   if (updErr) return { error: updErr.message };
+  const notice = moderationStatus
+    ? moderationNotice(moderationStatus, moderationFlagged)
+    : undefined;
   return {
     slug,
     updated: true,
     url: `${SITE_URL}/artifact/${slug}`,
+    ...(moderationStatus ? { moderation_status: moderationStatus } : {}),
+    ...(notice ? { notice } : {}),
     ...(warnings.length > 0 ? { warnings } : {}),
   };
 }

@@ -11,8 +11,10 @@ import {
   updateArtifact,
   uploadArtifactFile,
   updateArtifactStoragePath,
+  setArtifactModerationStatus,
 } from "@/lib/supabase/artifacts";
 import { lintArtifactSource } from "@/lib/artifact-lint";
+import { moderateArtifact } from "@/lib/moderation";
 
 function parseTags(tagsRaw: string): string[] {
   return [
@@ -61,6 +63,12 @@ export async function updateArtifactDetails(
 
   if (!title) return { error: "Title is required." };
 
+  // Re-screen the edited title/description. Only carry a definitive result
+  // (approved/rejected) into the update — if the classifier is unavailable
+  // ("pending"), leave moderation_status untouched so a metadata tweak doesn't
+  // force an already-approved artifact private.
+  const moderation = await moderateArtifact({ title, description });
+
   const { error } = await updateArtifact({
     slug,
     title,
@@ -69,6 +77,8 @@ export async function updateArtifactDetails(
     is_public: isPublic,
     author_name_visible: authorNameVisible,
     owner_id: ownership.user.id,
+    moderation_status:
+      moderation.status === "pending" ? undefined : moderation.status,
   });
 
   if (error) return { error: `Update failed: ${error}` };
@@ -106,7 +116,8 @@ export async function replaceArtifactFile(
   const { error: uploadError } = await uploadArtifactFile(newStoragePath, fileBuffer);
   if (uploadError) return { error: `Upload failed: ${uploadError}` };
 
-  const lintWarnings = lintArtifactSource(new TextDecoder().decode(fileBuffer), fileExt);
+  const source = new TextDecoder().decode(fileBuffer);
+  const lintWarnings = lintArtifactSource(source, fileExt);
 
   if (pathChanged) {
     const { error: dbError } = await updateArtifactStoragePath({
@@ -117,12 +128,27 @@ export async function replaceArtifactFile(
     if (dbError) return { error: `Database update failed: ${dbError}` };
   }
 
+  // Content changed, so it must be re-cleared. Unlike a metadata edit, a
+  // "pending" result here (classifier unavailable) is written through: new,
+  // unscreened content stays private until it can be cleared.
+  const moderation = await moderateArtifact({
+    title: artifact.title,
+    description: artifact.description,
+    content: source,
+  });
+  const { error: modError } = await setArtifactModerationStatus({
+    slug,
+    owner_id: user.id,
+    moderation_status: moderation.status,
+  });
+  if (modError) return { error: `Database update failed: ${modError}` };
+
   revalidatePath(`/artifact/${slug}`);
-  redirect(
-    lintWarnings.length > 0
-      ? `/artifact/${slug}?warn=${lintWarnings.join(",")}`
-      : `/artifact/${slug}`
-  );
+  const params = new URLSearchParams();
+  if (lintWarnings.length > 0) params.set("warn", lintWarnings.join(","));
+  if (moderation.status !== "approved") params.set("review", moderation.status);
+  const qs = params.toString();
+  redirect(`/artifact/${slug}${qs ? `?${qs}` : ""}`);
 }
 
 export async function deleteArtifactDetails(

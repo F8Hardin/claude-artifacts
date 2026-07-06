@@ -37,9 +37,35 @@ export function ArtifactInfoPanel({
     (w) => LINT_WARNING_MESSAGES[w] && !dismissedWarnings.includes(w)
   );
 
+  // Only the owner sees moderation state, and only when it isn't approved
+  // (an approved artifact needs no banner).
+  const reviewNotice =
+    canEdit && artifact.moderation_status !== "approved"
+      ? artifact.moderation_status === "rejected"
+        ? {
+            tone: "reject" as const,
+            text: "This artifact was flagged by automated content review and can't be made public. Edit it to comply with the content policy, then re-save to request another review.",
+          }
+        : {
+            tone: "pending" as const,
+            text: "This artifact is awaiting automated content review and stays private until it's cleared. If review is currently unavailable, it remains private until it can run.",
+          }
+      : null;
+
   return (
     <section className="absolute inset-x-0 bottom-0 z-20 border-t border-neutral-200 bg-white/90 shadow-[0_-6px_24px_rgba(0,0,0,0.07)] backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-950/90">
       <div className="mx-auto max-w-5xl px-4">
+        {reviewNotice && (
+          <div
+            className={
+              reviewNotice.tone === "reject"
+                ? "border-b border-red-200 bg-red-50 px-1 py-2 text-xs leading-relaxed text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
+                : "border-b border-blue-200 bg-blue-50 px-1 py-2 text-xs leading-relaxed text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300"
+            }
+          >
+            {reviewNotice.text}
+          </div>
+        )}
         {visibleWarnings.map((w) => (
           <div
             key={w}

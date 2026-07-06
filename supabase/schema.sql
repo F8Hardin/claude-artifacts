@@ -171,6 +171,42 @@ do $$ begin
   end if;
 end $$;
 
+-- ─── Moderation ──────────────────────────────────────────────────────────────
+-- Uploaded artifacts are executable documents from untrusted agents. They stay
+-- private until a hosted classifier clears them. Effective visibility is gated
+-- by is_public; the trigger below guarantees is_public can only be true once
+-- moderation_status = 'approved', regardless of which write path sets it (the
+-- upload action, the edit form's public toggle, or the MCP update tool).
+
+alter table public.artifacts
+  add column if not exists moderation_status text not null default 'pending';
+
+create or replace function public.enforce_moderation_gate()
+returns trigger set search_path = '' language plpgsql as $$
+begin
+  -- An artifact may only be public once it has been approved. Any other status
+  -- (pending / rejected) is silently forced back to private.
+  if NEW.is_public and NEW.moderation_status is distinct from 'approved' then
+    NEW.is_public := false;
+  end if;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists artifacts_moderation_gate on public.artifacts;
+create trigger artifacts_moderation_gate
+  before insert or update on public.artifacts
+  for each row execute procedure public.enforce_moderation_gate();
+
+revoke execute on function public.enforce_moderation_gate() from public, anon, authenticated;
+
+-- Grandfather already-published artifacts so they stay visible. This is safe to
+-- re-run: once the trigger is in place no row can be both public and
+-- un-approved, so after the first pass this UPDATE matches nothing.
+update public.artifacts
+  set moderation_status = 'approved'
+  where is_public = true and moderation_status <> 'approved';
+
 -- ─── Comments ────────────────────────────────────────────────────────────────
 
 create table if not exists public.comments (
