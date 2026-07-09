@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import {
   uploadArtifactFile,
   deleteArtifactFile,
@@ -9,6 +9,7 @@ import {
   fetchArtifactsByOwner,
 } from "@/lib/supabase/artifacts";
 import { lintArtifactSource } from "@/lib/artifact-lint";
+import { moderateArtifact } from "@/lib/moderation";
 
 function titleToSlug(title: string): string {
   return (
@@ -78,6 +79,18 @@ export async function uploadArtifact(
     return { error: "Upload limit reached (100 artifacts maximum). Delete some artifacts to upload more." };
   }
 
+  // Throttle uploads per user (shared budget with the MCP write tools). Fails
+  // open on limiter errors so a transient DB issue can't block legitimate use.
+  const admin = createAdminClient();
+  const { data: allowed, error: rlError } = await admin.rpc("rate_limit_hit", {
+    p_key: `mcp:write:${user.id}`,
+    p_max: 40,
+    p_window_seconds: 3600,
+  });
+  if (!rlError && allowed === false) {
+    return { error: "You're uploading too fast. Please wait a bit and try again." };
+  }
+
   const tags = tagsRaw
     ? tagsRaw
         .split(",")
@@ -94,7 +107,13 @@ export async function uploadArtifact(
   const { error: uploadError } = await uploadArtifactFile(storagePath, fileBuffer);
   if (uploadError) return { error: `Upload failed: ${uploadError}` };
 
-  const lintWarnings = lintArtifactSource(new TextDecoder().decode(fileBuffer), fileExt);
+  const source = new TextDecoder().decode(fileBuffer);
+  const lintWarnings = lintArtifactSource(source, fileExt);
+
+  // Screen before publishing. The DB trigger enforces the invariant, but we
+  // also compute is_public here so the intent is explicit: public only when
+  // the uploader asked for it AND the classifier approved.
+  const moderation = await moderateArtifact({ title, description, content: source });
 
   const { error: insertError } = await insertArtifact({
     slug,
@@ -103,8 +122,9 @@ export async function uploadArtifact(
     owner_id: user.id,
     storage_path: storagePath,
     tags,
-    is_public: isPublic,
+    is_public: isPublic && moderation.status === "approved",
     author_name_visible: authorNameVisible,
+    moderation_status: moderation.status,
   });
 
   if (insertError) {
@@ -112,9 +132,9 @@ export async function uploadArtifact(
     return { error: `Database error: ${insertError}` };
   }
 
-  redirect(
-    lintWarnings.length > 0
-      ? `/artifact/${slug}?warn=${lintWarnings.join(",")}`
-      : `/artifact/${slug}`
-  );
+  const params = new URLSearchParams();
+  if (lintWarnings.length > 0) params.set("warn", lintWarnings.join(","));
+  if (moderation.status !== "approved") params.set("review", moderation.status);
+  const qs = params.toString();
+  redirect(`/artifact/${slug}${qs ? `?${qs}` : ""}`);
 }

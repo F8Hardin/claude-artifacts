@@ -171,6 +171,42 @@ do $$ begin
   end if;
 end $$;
 
+-- ─── Moderation ──────────────────────────────────────────────────────────────
+-- Uploaded artifacts are executable documents from untrusted agents. They stay
+-- private until a hosted classifier clears them. Effective visibility is gated
+-- by is_public; the trigger below guarantees is_public can only be true once
+-- moderation_status = 'approved', regardless of which write path sets it (the
+-- upload action, the edit form's public toggle, or the MCP update tool).
+
+alter table public.artifacts
+  add column if not exists moderation_status text not null default 'pending';
+
+create or replace function public.enforce_moderation_gate()
+returns trigger set search_path = '' language plpgsql as $$
+begin
+  -- An artifact may only be public once it has been approved. Any other status
+  -- (pending / rejected) is silently forced back to private.
+  if NEW.is_public and NEW.moderation_status is distinct from 'approved' then
+    NEW.is_public := false;
+  end if;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists artifacts_moderation_gate on public.artifacts;
+create trigger artifacts_moderation_gate
+  before insert or update on public.artifacts
+  for each row execute procedure public.enforce_moderation_gate();
+
+revoke execute on function public.enforce_moderation_gate() from public, anon, authenticated;
+
+-- Grandfather already-published artifacts so they stay visible. This is safe to
+-- re-run: once the trigger is in place no row can be both public and
+-- un-approved, so after the first pass this UPDATE matches nothing.
+update public.artifacts
+  set moderation_status = 'approved'
+  where is_public = true and moderation_status <> 'approved';
+
 -- ─── Comments ────────────────────────────────────────────────────────────────
 
 create table if not exists public.comments (
@@ -365,6 +401,62 @@ do $$ begin
       using (bucket_id = 'artifacts' and owner_id = (select auth.uid())::text);
   end if;
 end $$;
+
+-- ─── Rate limiting ────────────────────────────────────────────────────────────
+-- Atomic fixed-window counter shared by the web server actions and the MCP edge
+-- function (both call it with the service-role key). Keys are built from a
+-- trusted identity (authenticated user id, or client IP for anonymous calls),
+-- so callers cannot spend each other's budget.
+
+create table if not exists public.rate_limits (
+  key          text primary key,
+  count        int not null default 0,
+  window_start timestamptz not null default now()
+);
+
+-- Only the service role touches this table; enable RLS with no policies so the
+-- anon/authenticated PostgREST API can never read or write it.
+alter table public.rate_limits enable row level security;
+
+-- Returns true if the request is within the limit. A single upsert keeps the
+-- increment atomic under concurrency; the window resets once it has elapsed.
+create or replace function public.rate_limit_hit(
+  p_key text,
+  p_max int,
+  p_window_seconds int
+) returns boolean
+  set search_path = ''
+  language plpgsql
+  security definer
+as $$
+declare
+  v_now   timestamptz := now();
+  v_count int;
+begin
+  insert into public.rate_limits as rl (key, count, window_start)
+    values (p_key, 1, v_now)
+  on conflict (key) do update
+    set count = case
+          when rl.window_start < v_now - make_interval(secs => p_window_seconds)
+          then 1
+          else rl.count + 1
+        end,
+        window_start = case
+          when rl.window_start < v_now - make_interval(secs => p_window_seconds)
+          then v_now
+          else rl.window_start
+        end
+  returning rl.count into v_count;
+  return v_count <= p_max;
+end;
+$$;
+
+-- Callable only with the service-role key (which bypasses RLS). Revoke the
+-- default PUBLIC EXECUTE so anon/authenticated users can't spend other users'
+-- budgets by passing a forged key.
+revoke execute on function public.rate_limit_hit(text, int, int)
+  from public, anon, authenticated;
+grant execute on function public.rate_limit_hit(text, int, int) to service_role;
 
 -- ─── Personal Access Tokens ───────────────────────────────────────────────────
 

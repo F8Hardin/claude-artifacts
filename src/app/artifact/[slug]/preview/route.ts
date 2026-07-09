@@ -20,12 +20,19 @@ export async function GET(
   const source = await fileBlob.text();
   const path = artifact.storage_path;
 
+  // The `sandbox` CSP directive forces this response into an opaque (null)
+  // origin even when the URL is opened directly, not just inside the
+  // sandboxed <iframe> on the artifact page. Without it, an attacker could
+  // upload a malicious .html/.svg/.md artifact and send a victim the raw
+  // /preview URL, executing script on our own origin with the victim's
+  // session. `allow-scripts allow-modals` mirrors the iframe's sandbox attr
+  // so legitimate artifacts still run. See the security review.
   const baseHeaders = {
     "Cache-Control": "private, no-store",
     "Content-Type": "text/html; charset=utf-8",
     "X-Content-Type-Options": "nosniff",
     "Content-Security-Policy":
-      "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.tailwindcss.com; frame-ancestors 'self'",
+      "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.tailwindcss.com; frame-ancestors 'self'; sandbox allow-scripts allow-modals",
   };
 
   if (path.endsWith(".svg")) {
@@ -33,6 +40,9 @@ export async function GET(
       headers: {
         ...baseHeaders,
         "Content-Type": "image/svg+xml; charset=utf-8",
+        // SVG is rendered as an image and never needs to execute script.
+        // Drop `allow-scripts` entirely: opaque origin + no scripting.
+        "Content-Security-Policy": "sandbox",
       },
     });
   }

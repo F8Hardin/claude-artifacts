@@ -49,6 +49,23 @@ export async function updateArtifactStoragePath(params: {
   return { error: error?.message ?? null };
 }
 
+export async function setArtifactModerationStatus(params: {
+  slug: string;
+  owner_id: string;
+  moderation_status: "approved" | "rejected" | "pending";
+}): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("artifacts")
+    .update({
+      moderation_status: params.moderation_status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("slug", params.slug)
+    .eq("owner_id", params.owner_id);
+  return { error: error?.message ?? null };
+}
+
 export async function deleteArtifactFile(storagePath: string): Promise<void> {
   const supabase = await createClient();
   await supabase.storage.from("artifacts").remove([storagePath]);
@@ -68,6 +85,7 @@ type ArtifactRow = {
   author_name_visible: boolean;
   created_at: string;
   like_count: number;
+  moderation_status: "approved" | "rejected" | "pending" | null;
 };
 
 type Profile = {
@@ -103,6 +121,7 @@ function toArtifact(row: ArtifactRow, profile: Profile | undefined): Artifact {
     author_username: profile?.username ?? profile?.github_username ?? null,
     author_avatar: profile?.avatar_url ?? null,
     like_count: row.like_count ?? 0,
+    moderation_status: row.moderation_status ?? "approved",
   };
 }
 
@@ -187,19 +206,31 @@ export async function fetchArtifactsByOwner(ownerId: string): Promise<Artifact[]
   return rows.map((row) => toArtifact(row, profiles.get(row.owner_id)));
 }
 
+// PostgREST parses commas and parentheses inside .or() filter strings, and
+// % / _ are SQL LIKE wildcards. Strip them so untrusted search text cannot
+// inject extra filter conditions or wildcards into an ilike pattern.
+function sanitizeIlikeTerm(query: string): string {
+  return query.replace(/[,()%_*\\]/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export async function searchArtifactRows(query: string): Promise<Artifact[]> {
   const supabase = await createClient();
-  const q = `%${query}%`;
+  const safe = sanitizeIlikeTerm(query);
+  const q = `%${safe}%`;
 
-  // Fetch title/description matches and tag matches separately, both server-side
+  // Fetch title/description matches and tag matches separately, both server-side.
+  // Skip the ilike branch if sanitizing left nothing, so a punctuation-only
+  // query can't become "%%" and match every public artifact.
   const [titleRes, tagRes] = await Promise.all([
-    supabase
-      .from("artifacts")
-      .select("*")
-      .or(`title.ilike.${q},description.ilike.${q}`)
-      .eq("is_public", true)
-      .order("created_at", { ascending: false })
-      .limit(50),
+    safe
+      ? supabase
+          .from("artifacts")
+          .select("*")
+          .or(`title.ilike.${q},description.ilike.${q}`)
+          .eq("is_public", true)
+          .order("created_at", { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: [], error: null }),
     supabase
       .from("artifacts")
       .select("*")
@@ -287,6 +318,7 @@ export async function insertArtifact(params: {
   tags: string[];
   is_public: boolean;
   author_name_visible: boolean;
+  moderation_status: "approved" | "rejected" | "pending";
 }): Promise<{ error: string | null }> {
   const supabase = await createClient();
   const { error } = await supabase.from("artifacts").insert(params);
@@ -301,6 +333,10 @@ export async function updateArtifact(params: {
   tags: string[];
   is_public: boolean;
   author_name_visible: boolean;
+  // Only set when moderation actually ran (approved/rejected). Left undefined
+  // for a metadata edit while the classifier is unavailable, so an already-
+  // approved artifact isn't forced private by a title tweak.
+  moderation_status?: "approved" | "rejected" | "pending";
 }): Promise<{ error: string | null }> {
   const supabase = await createClient();
   const { error } = await supabase
@@ -311,6 +347,9 @@ export async function updateArtifact(params: {
       tags: params.tags,
       is_public: params.is_public,
       author_name_visible: params.author_name_visible,
+      ...(params.moderation_status
+        ? { moderation_status: params.moderation_status }
+        : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("slug", params.slug)

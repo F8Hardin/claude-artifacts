@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { validateOAuthClient } from "@/lib/oauth";
 
 export default async function OAuthAuthorizePage({
   searchParams,
@@ -27,6 +28,24 @@ export default async function OAuthAuthorizePage({
     );
   }
 
+  // The client must be registered and the redirect_uri allow-listed for it —
+  // mirrors the gate in /api/oauth/authorize so we never show a consent screen
+  // (with the user's session) for a request whose code would be delivered to an
+  // unregistered redirect_uri.
+  const client = await validateOAuthClient(client_id, redirect_uri);
+  if (!client) {
+    return (
+      <main className="flex-1 flex items-center justify-center">
+        <div className="max-w-sm text-center space-y-2">
+          <h1 className="text-xl font-semibold">Invalid request</h1>
+          <p className="text-sm text-neutral-500">
+            This application is not registered to connect, or its redirect URL is not allowed.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -35,13 +54,9 @@ export default async function OAuthAuthorizePage({
     redirect(`/login?next=${encodeURIComponent(next)}`);
   }
 
-  // Derive a display name from client_id (URL → hostname, or use as-is)
-  let clientName = client_id ?? "This application";
-  try {
-    clientName = new URL(client_id).hostname;
-  } catch {
-    // not a URL — use as-is
-  }
+  // Display the registered client name — never a value derived from the raw
+  // client_id, which the caller controls and could set to spoof a trusted name.
+  const clientName = client.name;
 
   return (
     <main className="flex-1 flex items-center justify-center px-4">
