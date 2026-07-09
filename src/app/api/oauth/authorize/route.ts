@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { validateOAuthClient } from "@/lib/oauth";
 import { randomBytes } from "crypto";
 
 export async function POST(request: NextRequest) {
@@ -17,6 +18,20 @@ export async function POST(request: NextRequest) {
   if (!redirectUri.startsWith("https://")) {
     return NextResponse.json(
       { error: "invalid_request", error_description: "redirect_uri must use HTTPS" },
+      { status: 400 }
+    );
+  }
+
+  // Authorization-code issuance gate: the client must be registered and the
+  // redirect_uri must be allow-listed for it. Without this, a code could be
+  // delivered to an attacker-controlled redirect_uri and exchanged for a token.
+  const client = await validateOAuthClient(clientId, redirectUri);
+  if (!client) {
+    return NextResponse.json(
+      {
+        error: "invalid_request",
+        error_description: "unknown client_id or redirect_uri not allowed for this client",
+      },
       { status: 400 }
     );
   }
