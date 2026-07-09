@@ -52,7 +52,7 @@ export default async function ArtifactPage({
   const lintWarnings = canEdit ? (warn?.split(",").filter(Boolean) ?? []) : [];
 
   return (
-    <main className="relative h-[calc(100dvh-3.5rem)] min-h-[calc(100dvh-3.5rem)] flex-1 overflow-hidden bg-white dark:bg-black">
+    <main className="fixed inset-x-0 bottom-0 top-14 overflow-hidden bg-white dark:bg-black">
       <ArtifactViewer
         previewUrl={`/artifact/${artifact.slug}/preview`}
         title={artifact.title}
