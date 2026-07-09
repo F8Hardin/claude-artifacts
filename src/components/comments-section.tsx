@@ -144,7 +144,7 @@ export function CommentsSection({
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Add a comment…"
             maxLength={1000}
-            className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-3 py-1.5 text-base sm:text-sm rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             type="submit"
