@@ -90,6 +90,11 @@ export async function POST(request: NextRequest) {
   if (redirect_uri && authCode.redirect_uri !== redirect_uri) {
     return fail(400, "invalid_grant", "redirect_uri mismatch");
   }
+  // Bind the code to the client it was issued to: a presented client_id must
+  // match the one recorded at authorization time.
+  if (client_id && authCode.client_id !== client_id) {
+    return fail(400, "invalid_grant", "client_id mismatch");
+  }
 
   if (authCode.code_challenge) {
     if (!code_verifier) {

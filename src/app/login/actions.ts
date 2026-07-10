@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeNextPath } from "@/lib/safe-redirect";
 
 function createDefaultUsername(): string {
   return `user-${Math.random().toString(36).slice(2, 8)}`;
@@ -31,8 +32,7 @@ export async function signInWithEmail(
 
   if (error) return { error: error.message };
 
-  const next = (formData.get("next") as string | null) ?? "/";
-  redirect(next.startsWith("/") ? next : "/");
+  redirect(sanitizeNextPath(formData.get("next") as string | null));
 }
 
 export async function signUpWithEmail(

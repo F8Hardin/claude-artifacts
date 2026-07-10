@@ -1,14 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeNextPath } from "@/lib/safe-redirect";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const origin = new URL(request.url).origin;
 
   const formData = await request.formData();
-  const next = (formData.get("next") as string | null) ?? "/";
-  // Only allow internal redirects
-  const safeNext = next.startsWith("/") ? next : "/";
+  // Only allow internal redirects (rejects "//host", "/\\host", etc.)
+  const safeNext = sanitizeNextPath(formData.get("next") as string | null);
 
   const callbackUrl = `${origin}/auth/callback${safeNext !== "/" ? `?next=${encodeURIComponent(safeNext)}` : ""}`;
 
