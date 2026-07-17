@@ -9,6 +9,8 @@ export async function POST(request: NextRequest) {
   const redirectUri = formData.get("redirect_uri") as string;
   const state = (formData.get("state") as string) ?? "";
   const codeChallenge = (formData.get("code_challenge") as string) ?? null;
+  const codeChallengeMethod =
+    (formData.get("code_challenge_method") as string) ?? "";
 
   if (!clientId || !redirectUri) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
@@ -18,6 +20,19 @@ export async function POST(request: NextRequest) {
   if (!redirectUri.startsWith("https://")) {
     return NextResponse.json(
       { error: "invalid_request", error_description: "redirect_uri must use HTTPS" },
+      { status: 400 }
+    );
+  }
+
+  // PKCE is mandatory for these public clients. Enforce it at the point the code
+  // is issued (not just on the consent page) so a NULL code_challenge can never
+  // be persisted — that would disable PKCE verification at the token endpoint.
+  if (!codeChallenge || codeChallengeMethod !== "S256") {
+    return NextResponse.json(
+      {
+        error: "invalid_request",
+        error_description: "code_challenge with code_challenge_method=S256 is required",
+      },
       { status: 400 }
     );
   }

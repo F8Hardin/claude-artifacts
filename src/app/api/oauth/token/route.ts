@@ -108,10 +108,23 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  await supabase
+  // Atomically claim the code: mark it used only if it is still unused, and
+  // require the write to affect a row. Two concurrent exchanges of the same code
+  // therefore cannot both proceed to mint a token — the loser sees zero rows.
+  const { data: claimed, error: claimError } = await supabase
     .from("oauth_authorization_codes")
     .update({ used: true })
-    .eq("code", code);
+    .eq("code", code)
+    .eq("used", false)
+    .select("code");
+
+  if (claimError) {
+    console.error("[oauth/token] code claim error", claimError);
+    return fail(500, "server_error", "code claim failed");
+  }
+  if (!claimed || claimed.length === 0) {
+    return fail(400, "invalid_grant", "code is invalid, used, or expired");
+  }
 
   const rawToken = "cap_" + randomBytes(32).toString("base64url");
   const hash = sha256hex(rawToken);

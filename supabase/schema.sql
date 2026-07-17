@@ -78,15 +78,31 @@ end $$;
 -- Auto-create profile row when a new user signs up
 create or replace function public.handle_new_user()
 returns trigger set search_path = '' language plpgsql security definer as $$
+declare
+  base_username text;
+  final_username text;
 begin
+  -- Username comes from user-controlled signup metadata. It must be unique so
+  -- one account cannot claim another author's handle (impersonation). If the
+  -- requested handle is already taken, fall back to an id-derived suffix, which
+  -- is effectively collision-free.
+  base_username := coalesce(
+    nullif(NEW.raw_user_meta_data->>'username', ''),
+    nullif(NEW.raw_user_meta_data->>'user_name', ''),
+    'user-' || substr(replace(NEW.id::text, '-', ''), 1, 6)
+  );
+  if exists (
+    select 1 from public.profiles where lower(username) = lower(base_username)
+  ) then
+    final_username := base_username || '-' || substr(replace(NEW.id::text, '-', ''), 1, 6);
+  else
+    final_username := base_username;
+  end if;
+
   insert into public.profiles (id, username, github_username, avatar_url)
   values (
     NEW.id,
-    coalesce(
-      nullif(NEW.raw_user_meta_data->>'username', ''),
-      nullif(NEW.raw_user_meta_data->>'user_name', ''),
-      'user-' || substr(replace(NEW.id::text, '-', ''), 1, 6)
-    ),
+    final_username,
     NEW.raw_user_meta_data->>'user_name',  -- populated by GitHub OAuth
     NEW.raw_user_meta_data->>'avatar_url'
   )
@@ -103,6 +119,25 @@ create trigger on_auth_user_created
 -- Trigger functions fire regardless of caller privileges, so they never need
 -- to be directly callable as PostgREST RPCs. Revoke the default PUBLIC EXECUTE.
 revoke execute on function public.handle_new_user() from public, anon, authenticated;
+
+-- Enforce unique usernames (case-insensitive) so a handle cannot be claimed by
+-- more than one account. First rename any pre-existing duplicates by appending
+-- an id-derived suffix, then add the constraint. Safe to re-run.
+update public.profiles p
+  set username = p.username || '-' || substr(replace(p.id::text, '-', ''), 1, 6)
+  from (
+    select id,
+           row_number() over (
+             partition by lower(username) order by created_at, id
+           ) as rn
+    from public.profiles
+    where username is not null
+  ) d
+  where p.id = d.id and d.rn > 1;
+
+create unique index if not exists profiles_username_lower_key
+  on public.profiles (lower(username))
+  where username is not null;
 
 -- ─── Artifacts ───────────────────────────────────────────────────────────────
 
@@ -184,8 +219,25 @@ alter table public.artifacts
 create or replace function public.enforce_moderation_gate()
 returns trigger set search_path = '' language plpgsql as $$
 begin
+  -- Only trusted server-side code (the service_role, used by the upload action
+  -- and the MCP function after running the classifier) may assign a moderation
+  -- verdict. Writes from any other caller — a logged-in user's session, or a
+  -- raw PostgREST call with the public anon key — cannot self-approve: their
+  -- moderation_status is pinned. On INSERT it is forced to 'pending'; on UPDATE
+  -- it is held at the stored value. current_user reflects the PostgREST role
+  -- (service_role / authenticated / anon) after its per-request SET ROLE, and
+  -- 'postgres'/'supabase_admin' cover migrations run as the DB owner.
+  if current_user not in ('service_role', 'supabase_admin', 'postgres') then
+    if TG_OP = 'INSERT' then
+      NEW.moderation_status := 'pending';
+    else
+      NEW.moderation_status := OLD.moderation_status;
+    end if;
+  end if;
+
   -- An artifact may only be public once it has been approved. Any other status
-  -- (pending / rejected) is silently forced back to private.
+  -- (pending / rejected) is silently forced back to private. Applies to every
+  -- caller, service_role included.
   if NEW.is_public and NEW.moderation_status is distinct from 'approved' then
     NEW.is_public := false;
   end if;

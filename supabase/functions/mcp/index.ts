@@ -454,12 +454,11 @@ async function toolUpdate(userId: string, args: Record<string, unknown>) {
     warnings = lintArtifactSource(args.content as string, ext);
   }
 
-  // Re-screen on any change. Content changes carry a "pending" result through
-  // (unscreened content stays private); metadata-only changes leave the status
-  // untouched when the classifier is unavailable so an approved artifact isn't
-  // forced private by a title tweak.
-  const metadataChanged =
-    args.title !== undefined || args.description !== undefined;
+  // Moderation status tracks the screened *content*, so we only re-screen when
+  // the content itself changes (the "pending" result is carried through, so
+  // unscreened content stays private). A metadata-only edit must never reassign
+  // the verdict: otherwise a benign new title could launder a previously
+  // rejected/unscreened file to approved+public. Leave the status untouched.
   let moderationStatus: "approved" | "rejected" | "pending" | undefined;
   let moderationFlagged: string[] = [];
   if (contentChanged) {
@@ -470,13 +469,6 @@ async function toolUpdate(userId: string, args: Record<string, unknown>) {
     });
     moderationStatus = mod.status;
     moderationFlagged = mod.flagged;
-  } else if (metadataChanged) {
-    const mod = await moderateContent({
-      title: newTitle,
-      description: newDescription,
-    });
-    moderationFlagged = mod.flagged;
-    moderationStatus = mod.status === "pending" ? undefined : mod.status;
   }
 
   const tags = args.tags

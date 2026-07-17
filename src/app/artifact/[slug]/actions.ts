@@ -63,12 +63,11 @@ export async function updateArtifactDetails(
 
   if (!title) return { error: "Title is required." };
 
-  // Re-screen the edited title/description. Only carry a definitive result
-  // (approved/rejected) into the update — if the classifier is unavailable
-  // ("pending"), leave moderation_status untouched so a metadata tweak doesn't
-  // force an already-approved artifact private.
-  const moderation = await moderateArtifact({ title, description });
-
+  // Moderation status reflects the screened *content*, never the metadata.
+  // A title/description edit must not be able to re-approve an artifact whose
+  // stored file was rejected or never screened, so we don't run the classifier
+  // here and don't touch moderation_status. Content re-screening happens in
+  // replaceArtifactFile. (The DB gate also pins the status for this path.)
   const { error } = await updateArtifact({
     slug,
     title,
@@ -77,8 +76,6 @@ export async function updateArtifactDetails(
     is_public: isPublic,
     author_name_visible: authorNameVisible,
     owner_id: ownership.user.id,
-    moderation_status:
-      moderation.status === "pending" ? undefined : moderation.status,
   });
 
   if (error) return { error: `Update failed: ${error}` };

@@ -1,4 +1,4 @@
-import { createClient } from "./server";
+import { createClient, createAdminClient } from "./server";
 import { Artifact } from "@/lib/artifacts";
 
 // ─── Storage ─────────────────────────────────────────────────────────────────
@@ -54,7 +54,11 @@ export async function setArtifactModerationStatus(params: {
   owner_id: string;
   moderation_status: "approved" | "rejected" | "pending";
 }): Promise<{ error: string | null }> {
-  const supabase = await createClient();
+  // Assigning a moderation verdict requires the service role: the DB gate pins
+  // moderation_status for non-privileged callers. The owner_id filter re-scopes
+  // the write since the admin client bypasses RLS; callers must have already
+  // verified ownership.
+  const supabase = createAdminClient();
   const { error } = await supabase
     .from("artifacts")
     .update({
@@ -299,12 +303,23 @@ export async function fetchProfileByUsername(
   username: string
 ): Promise<{ id: string; username: string | null; github_username: string | null; avatar_url: string | null } | null> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const cols = "id, username, github_username, avatar_url";
+  // Look the value up as a bound filter value on each column separately.
+  // Interpolating it into a PostgREST .or() string would let punctuation in the
+  // route param (commas, parentheses) inject extra filter conditions.
+  const byUsername = await supabase
     .from("profiles")
-    .select("id, username, github_username, avatar_url")
-    .or(`username.eq.${username},github_username.eq.${username}`)
+    .select(cols)
+    .eq("username", username)
     .maybeSingle();
-  return data ?? null;
+  if (byUsername.data) return byUsername.data;
+
+  const byGithub = await supabase
+    .from("profiles")
+    .select(cols)
+    .eq("github_username", username)
+    .maybeSingle();
+  return byGithub.data ?? null;
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
@@ -320,7 +335,10 @@ export async function insertArtifact(params: {
   author_name_visible: boolean;
   moderation_status: "approved" | "rejected" | "pending";
 }): Promise<{ error: string | null }> {
-  const supabase = await createClient();
+  // The classifier verdict (params.moderation_status) is only honoured for the
+  // service role — the DB gate forces every other caller's insert to 'pending'.
+  // The upload action authenticates the user and sets owner_id before calling.
+  const supabase = createAdminClient();
   const { error } = await supabase.from("artifacts").insert(params);
   return { error: error?.message ?? null };
 }
