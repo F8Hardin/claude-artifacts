@@ -83,6 +83,60 @@ function lintArtifactSource(content: string, ext: string): string[] {
   return [];
 }
 
+// ─── Headless model contract ──────────────────────────────────────────────────
+// An artifact may declare a headless "model" — the pure parameters/state behind
+// its visual — as a JSON manifest marked with @artifact-model. This lets an agent
+// discover what it can drive (via describe_artifact) instead of only reading the
+// source or viewing rendered pixels. The marker sits inside any comment syntax
+// (JS //, /* */, HTML <!-- -->, Markdown), so it applies to every file type.
+//
+//   /* @artifact-model
+//   { "parameters": { "k": { "type": "integer", "default": 3 } },
+//     "state": { "centroids": "array of [x, y] cluster centers" } }
+//   */
+
+const ARTIFACT_MODEL_MARKER = "@artifact-model";
+
+// Extract the balanced JSON object following the marker WITHOUT executing any
+// artifact code — a plain string scan. Braces inside JSON strings are skipped so
+// they don't throw off the depth count. Returns null when the marker is absent or
+// the manifest is malformed; a bad manifest must never break describe_artifact.
+function extractArtifactModel(source: string): Record<string, unknown> | null {
+  const markerAt = source.indexOf(ARTIFACT_MODEL_MARKER);
+  if (markerAt === -1) return null;
+  const start = source.indexOf("{", markerAt + ARTIFACT_MODEL_MARKER.length);
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < source.length; i++) {
+    const ch = source[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) {
+        try {
+          const parsed = JSON.parse(source.slice(start, i + 1));
+          return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+            ? (parsed as Record<string, unknown>)
+            : null;
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
 // ─── Moderation ───────────────────────────────────────────────────────────────
 // Mirrors src/lib/moderation.ts. Screens artifacts with a hosted classifier
 // before they can be made public. Returns "pending" (fail-safe: stays private)
@@ -291,6 +345,23 @@ const TOOLS = [
       "Call this before writing an artifact so it can be uploaded successfully.",
     inputSchema: { type: "object", properties: {} },
   },
+  {
+    name: "describe_artifact",
+    description:
+      "Inspect an artifact's headless MODEL — the parameters an agent can set and the state it " +
+      "computes back — without rendering it or reading its full source. Returns `has_model: false` " +
+      "for render-only artifacts (most of them), or the declared `model` (a `parameters` schema and " +
+      "a `state` description) for artifacts that expose one. Use this to discover what a simulation " +
+      "or visualization (e.g. a k-means demo or a Bloch sphere) can actually be driven with, instead " +
+      "of only observing its visual output. Works for public artifacts; private ones require authentication.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string", description: "Artifact slug" },
+      },
+      required: ["slug"],
+    },
+  },
 ];
 
 // ─── Setup guide ───────────────────────────────────────────────────────────────
@@ -317,7 +388,29 @@ Other supported formats (uploaded with a different extension, not subject to the
 - .html — rendered as-is
 - .svg — rendered as an image
 - .md / .markdown — rendered as styled, formatted text
-- .mmd — rendered as a Mermaid diagram`;
+- .mmd — rendered as a Mermaid diagram
+
+Optional — make an artifact agent-drivable (headless model contract):
+By default an artifact only renders visually: an agent can view it but cannot drive it, so an interactive demo is just a static picture to another model. To let an agent discover the parameters behind your visualization, declare a headless MODEL — a JSON manifest marked with @artifact-model, placed anywhere in the file inside a comment. The marker works in every file type (JS //, /* */, HTML <!-- -->, Markdown). It has two keys:
+- "parameters": a JSON-Schema-style object describing each input the model accepts (type, minimum/maximum, default) — e.g. a k-means demo's k, seed, and iteration count, or a Bloch sphere's theta/phi.
+- "state": a description of what the model computes back — e.g. centroids, cluster assignments, and inertia.
+Example (inside a JSX comment — keep your visual component exactly as-is; the manifest is purely additive metadata):
+  /* @artifact-model
+  {
+    "name": "k-means clustering",
+    "parameters": {
+      "k": { "type": "integer", "minimum": 1, "maximum": 10, "default": 3 },
+      "seed": { "type": "integer", "default": 42 },
+      "iterations": { "type": "integer", "minimum": 1, "maximum": 100, "default": 10 }
+    },
+    "state": {
+      "centroids": "array of [x, y] cluster centers",
+      "assignments": "cluster index for each input point",
+      "inertia": "sum of squared distances to the nearest centroid"
+    }
+  }
+  */
+An agent reads this manifest with describe_artifact to learn what it can turn and what it will get back. Declaring the manifest also positions the artifact for parametric evaluation (running the model with chosen inputs), which is rolling out separately.`;
 
 // ─── Authenticated tool implementations ───────────────────────────────────────
 
@@ -638,6 +731,67 @@ async function toolGetContent(
   };
 }
 
+async function toolDescribe(
+  userId: string | null,
+  args: Record<string, unknown>
+) {
+  const slug = String(args.slug ?? "");
+  if (!slug) return { error: "slug is required" };
+
+  const sb = createClient(SUPABASE_URL, SERVICE_KEY);
+  const { data: artifact, error: fetchErr } = await sb
+    .from("artifacts")
+    .select("slug, title, description, tags, is_public, owner_id, storage_path")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (fetchErr || !artifact) return { error: "Artifact not found" };
+
+  // Same privacy rule as get_artifact_content: private artifacts need ownership.
+  if (!artifact.is_public && artifact.owner_id !== userId) {
+    return { error: "This artifact is private" };
+  }
+
+  const { data: blob, error: storageErr } = await sb.storage
+    .from("artifacts")
+    .download(artifact.storage_path);
+  if (storageErr || !blob)
+    return { error: `Could not download artifact: ${storageErr?.message}` };
+
+  const source = await blob.text();
+  const model = extractArtifactModel(source);
+  const extension = artifact.storage_path.match(/\.[^.]+$/)?.[0] ?? ".html";
+
+  if (!model) {
+    return {
+      slug: artifact.slug,
+      title: artifact.title,
+      url: `${SITE_URL}/artifact/${artifact.slug}`,
+      extension,
+      has_model: false,
+      notice:
+        "This artifact has not declared a headless model, so it can only be rendered visually, not " +
+        "driven parametrically. Use get_artifact_content to read its source. To make an artifact " +
+        "agent-drivable, its author adds an @artifact-model manifest — see get_artifact_setup_guide.",
+    };
+  }
+
+  return {
+    slug: artifact.slug,
+    title: artifact.title,
+    description: artifact.description,
+    tags: artifact.tags,
+    url: `${SITE_URL}/artifact/${artifact.slug}`,
+    extension,
+    has_model: true,
+    model,
+    notice:
+      "This artifact declares a headless model. `model.parameters` lists the inputs you can set and " +
+      "`model.state` describes what it computes back. Parametric evaluation (running the model with " +
+      "chosen inputs) is rolling out separately; for now use this schema to understand the artifact's " +
+      "inputs and outputs, and get_artifact_content to read its implementation.",
+  };
+}
+
 // ─── MCP protocol ─────────────────────────────────────────────────────────────
 
 function ok(id: unknown, result: unknown): Response {
@@ -691,6 +845,7 @@ const PUBLIC_TOOL_NAMES = new Set([
   "get_top_artifacts",
   "get_artifact_content",
   "get_artifact_setup_guide",
+  "describe_artifact",
 ]);
 const WRITE_TOOL_NAMES = new Set([
   "upload_artifact",
@@ -798,6 +953,12 @@ Deno.serve(async (req: Request) => {
     }
     if (p.name === "get_artifact_content") {
       const result = await toolGetContent(userId, args);
+      return ok(id, {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      });
+    }
+    if (p.name === "describe_artifact") {
+      const result = await toolDescribe(userId, args);
       return ok(id, {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       });
